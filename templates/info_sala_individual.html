@@ -1,0 +1,67 @@
+<!-- info_sala_individual.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Información de Sala</title>
+</head>
+<body>
+    <h1>Información de Sala</h1>
+    <ul>
+        <li>Numero: {{ sala_data.numero }}</li>
+        <li>Capacidad: {{ sala_data.capacidad }}</li>
+        <!-- Agregar más campos según sea necesario -->
+    </ul>
+
+    <h2>Reservar Sala</h2>
+    <form id="reservaForm">
+        <label for="fechaInicio">Fecha de inicio:</label>
+        <input type="datetime-local" id="fechaInicio" name="fechaInicio" required>
+
+        <label for="fechaFin">Fecha de fin:</label>
+        <input type="datetime-local" id="fechaFin" name="fechaFin" required>
+
+        <label for="nombreReservante">Nombre del reservante:</label>
+        <input type="text" id="nombreReservante" name="nombreReservante" required>
+        
+        <button onclick="window.location.href='{{ sala_data.enlaces[1].url }}'">{{ sala_data.enlaces[1].rel }}</button>
+    </form>
+
+    <script>
+        function hacerReserva() {
+            // Obtener datos del formulario
+            const fechaInicio = document.getElementById("fechaInicio").value;
+            const fechaFin = document.getElementById("fechaFin").value;
+            const nombreReservante = document.getElementById("nombreReservante").value;
+
+            // Realizar la solicitud de reserva al backend
+            // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
+
+            // Ejemplo usando fetch:
+            fetch(`/${oficina_id}/reservar/${sala_id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sala_id: sala_id,
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin,
+                    nombre_reservante: nombreReservante,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Manejar la respuesta del backend, por ejemplo, mostrar un mensaje de éxito
+                alert('Reserva exitosa!');
+            })
+            .catch(error => {
+                console.error('Error al hacer la reserva:', error);
+                // Manejar errores, por ejemplo, mostrar un mensaje de error
+                alert('Error al hacer la reserva. Por favor, inténtelo de nuevo.');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,19 +1,16 @@
-from fastapi import FastAPI, HTTPException, Depends, status, Request
+from fastapi import FastAPI, HTTPException, Depends, status, Request, Cookie, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
 from bson import ObjectId
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
+from starlette.middleware.sessions import SessionMiddleware
   
 app = FastAPI()
-app.mongodb_client = AsyncIOMotorClient("mongodb://localhost:27017/")
-db = app.mongodb_client["florida_center"]
-coleccion_salas = db["salas"]
-coleccion_reservas = db["reservas"]
-
-# Configurar templates de Jinja2
+mongo_db_url = "mongodb://localhost:27017"
+app.mongodb_client = AsyncIOMotorClient(mongo_db_url)
 templates = Jinja2Templates(directory="templates")
 
 # Modelo Pydantic para la sala
@@ -32,30 +29,30 @@ class Reserva(BaseModel):
     enlaces: List[Dict[str, Union[str, Dict[str, str]]]] = []
 
 
-def generar_enlaces_sala(sala_id: str) -> List[Dict[str, Union[str, Dict[str, str]]]]:
+def generar_enlaces_sala(request: Request,sala_id: str) -> List[Dict[str, str]]:
     return [
-        {"rel": "Ver Sala", "boton": f"<button onclick=\"window.location.href='/salas/{sala_id}'\">Ver Sala</button>"}
+        {"rel": "Ver Sala", "url": f"/{request.cookies.get("oficina_id")}/salas/{sala_id}"}
         # Agregar más enlaces según sea necesario
     ]
 
 
-def generar_enlaces_reserva(reserva_id: str) -> List[Dict[str, Union[str, Dict[str, str]]]]:
+def generar_enlaces_reserva(request: Request, _id: str) -> List[Dict[str, Union[str, Dict[str, str]]]]:
     return [
-        {"rel": "Ver Reserva", "href": f"/reservas/{reserva_id}", "metodo": "GET"},
-        {"rel": "Reservar", "href": f"/reservar/{reserva_id}", "metodo": "PUT"},
-        {"rel": "actualizar", "href": f"/reservas/{reserva_id}", "metodo": "PUT"},
-        {"rel": "eliminar", "href": f"/reservas/{reserva_id}", "metodo": "DELETE"}
+        {"rel": "Ver Reservas de la sala", "url": f"/{request.cookies.get("oficina_id")}/reservas/{_id}/todas", "metodo": "GET"},
+        {"rel": "Reservar", "url": f"/{request.cookies.get("oficina_id")}/reservar/{_id}", "metodo": "POST"},
+        # {"rel": "Actualizar", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}", "metodo": "PUT"},
+        # {"rel": "Eliminar", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}", "metodo": "DELETE"}
         # Agregar mas enlaces segun necesidades
     ]
 
-async def verificar_disponibilidad(oficina_id: str, reserva: Reserva, request: Request):
+async def verificar_disponibilidad(reserva: Reserva, request: Request):
     try:
         print(f"Oid: {reserva.sala_id}")
         print(f"hora inicio: {reserva.fecha_inicio}")
         print(f"hora fin: {reserva.fecha_fin}")
 
         # Obtener todas las reservas para la sala y el día especificado
-        reservas_dia = await app.mongodb_client[oficina_id]["reservas"].find({
+        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
             "sala_id": reserva.sala_id,
             "fecha_inicio": {"$gte": reserva.fecha_inicio.replace(hour=0, minute=0, second=0),
                              "$lt": reserva.fecha_inicio.replace(hour=23, minute=59, second=59)}
@@ -89,21 +86,31 @@ async def verificar_disponibilidad(oficina_id: str, reserva: Reserva, request: R
         print(f"Error al verificar disponibilidad: {e}")
         return False
 
+async def obtener_salas(db):
+    return await db["salas"].find().to_list(None)
+
+async def obtener_reservas(db):
+    return await db["reservas"].find().to_list(None)
+
 # Página inicial para seleccionar la oficina
 @app.get("/", response_class=HTMLResponse)
 async def select_oficina(request: Request):
-    # Mostrar formulario o enlaces para seleccionar la oficina
-    return templates.TemplateResponse("select_office.html", {"request": request})
+    oficinas_data = [
+        {"nombre": "Florida Center", "oficina_id": "florida_center"},
+        {"nombre": "Alto Las Condes", "oficina_id": "alto_las_condes"}
+    ]
+    return templates.TemplateResponse("select_office.html", {"request": request, "oficinas_data": oficinas_data})
 
 # Lista de Salas de una Oficina
-@app.get("/oficina/{oficina_id}/salas", response_class=HTMLResponse)
-async def mostrar_lista_salas(request: Request, oficina_id: str):
+@app.get("/{oficina_id}/salas", response_model=List[Sala], response_class=HTMLResponse)
+async def mostrar_lista_salas(request: Request):
     try:
-        salas_from_db = await app.mongodb_client[oficina_id]["salas"].find().to_list(None)
+        # print(request.cookies.get("oficina_id"))
+        salas_from_db = await obtener_salas(request.app.mongodb_client[request.cookies.get("oficina_id")])
         salas_con_enlaces = []
 
         for sala in salas_from_db:
-            enlaces_sala = generar_enlaces_sala(str(sala["_id"]))
+            enlaces_sala = generar_enlaces_sala(request,str(sala["_id"]))
             sala_con_enlaces = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
             salas_con_enlaces.append(sala_con_enlaces)
 
@@ -114,45 +121,54 @@ async def mostrar_lista_salas(request: Request, oficina_id: str):
 
 
 # Operación para obtener todas las reservas
-@app.get("/oficina/{oficina_id}/reservas", response_model=List[Reserva])
-async def get_reservas(oficina_id: str):
-    reservas_from_db = await app.mongodb_client[oficina_id]["reservas"].find().to_list(None)
-    reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
-    return reservas
+@app.get("/{oficina_id}/reservas", response_model=List[Reserva], response_class=HTMLResponse)
+async def get_reservas(request: Request):
+    try:
+        reservas_from_db = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find().to_list(None)
+        reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
+        return templates.TemplateResponse("lista_reservas.html", {"request": request, "reservas": reservas})
+    except Exception as e:
+        print(f"Error al obtener reservas: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para obtener una sala por su ID
-@app.get("/oficina/{oficina_id}/salas/{sala_id}", response_model=Sala)
-async def get_sala(oficina_id: str ,sala_id: str):
+@app.get("/{oficina_id}/salas/{sala_id}", response_model=Sala, response_class=HTMLResponse)
+async def get_sala(sala_id: str, request: Request):
     try:
-        sala = await app.mongodb_client[oficina_id]["salas"].find_one({"_id": ObjectId(sala_id)})
+        sala = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(sala_id)})
         if sala:
-            enlaces_sala = generar_enlaces_sala(sala_id)
-            return Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
+            enlaces_reserva = generar_enlaces_reserva(request, sala_id)
+            sala_data = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_reserva)
+
+            return templates.TemplateResponse(
+                "info_sala_individual.html",
+                {"request": request, "sala_data": sala_data, "oficina_id": request.cookies.get("oficina_id")}
+            )
         raise HTTPException(status_code=404, detail="Sala no encontrada")
     except Exception as e:
         print(f"Error al obtener sala: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
-    
+
+
 # Operación para obtener una reserva por su ID
-@app.get("/oficina/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
-async def get_reserva(oficina_id: str, reserva_id: str):
+@app.get("/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
+async def get_reserva(reserva_id: str, request: Request):
     try:
-        reserva = await app.mongodb_client[oficina_id]["reservas"].find_one({"_id": ObjectId(reserva_id)})
+        reserva = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one({"_id": ObjectId(reserva_id)})
         if reserva:
-            enlaces_reserva = generar_enlaces_reserva(reserva_id)
+            enlaces_reserva = generar_enlaces_reserva(request, reserva_id)
             return Reserva(**reserva, oid=str(reserva["_id"]), enlaces=enlaces_reserva)
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     except Exception as e:
         print(f"Error al obtener reserva: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-
-# Operación para obtener todas las reservas de un usuario por su nombre
-@app.get("/oficina/{oficina_id}/mis_reservas/{nombre_reservante}", response_model=List[Reserva])
-async def get_reservas_by_user(oficina_id: str, nombre_reservante: str):
+# Operación para obtener todas las reservas de una sala por el ID de la sala
+@app.get("/{oficina_id}/reservas/{sala_id}/todas", response_model=List[Reserva])
+async def get_reservas_by_room_id(sala_id: str, request: Request):
     try:
-        reservas = await app.mongodb_client[oficina_id]["reservas"].find({"nombre_reservante": nombre_reservante}).to_list(None)
+        reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"sala_id": sala_id}).to_list(None)
         if reservas:
             return [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas]
         raise HTTPException(status_code=404, detail="No se encontraron reservas para este usuario")
@@ -161,13 +177,27 @@ async def get_reservas_by_user(oficina_id: str, nombre_reservante: str):
         print(f"Error al obtener reservas: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
+# Operación para obtener todas las reservas de un usuario por su nombre
+@app.get("/{oficina_id}/mis_reservas/{nombre_reservante}", response_model=List[Reserva])
+async def get_reservas_by_user(nombre_reservante: str, request: Request):
+    try:
+        reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": nombre_reservante}).to_list(None)
+        if reservas:
+            return [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas]
+        raise HTTPException(status_code=404, detail="No se encontraron reservas para este usuario")
 
-@app.post("/oficina/{oficina_id}/reservar/{sala_id}", response_model=Reserva)
-async def hacer_reserva(oficina_id: str, reserva: Reserva, request: Request):
+    except Exception as e:
+        print(f"Error al obtener reservas: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+    
+
+# Operación para hacer una reserva en la base de datos
+@app.post("/{oficina_id}/reservar/{sala_id}", response_model=Reserva)
+async def hacer_reserva(reserva: Reserva, request: Request):
     # Iniciar una transacción
-    async with await app.mongodb_client.start_session() as session:
+    async with await request.app.mongodb_client.start_session() as session:
         try:
-            if not await verificar_disponibilidad(oficina_id,reserva, request):
+            if not await verificar_disponibilidad(reserva, request):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="La sala ya está reservada para ese intervalo de tiempo."
@@ -182,7 +212,7 @@ async def hacer_reserva(oficina_id: str, reserva: Reserva, request: Request):
             }
 
             # Insertar reserva en la colección dentro de la transacción
-            result = await app.mongodb_client[oficina_id]["reservas"].insert_one(nueva_reserva, session=session)
+            result = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].insert_one(nueva_reserva, session=session)
 
             nueva_reserva["_id"] = str(result.inserted_id)
             enlaces_reserva = generar_enlaces_reserva(nueva_reserva["_id"])
@@ -195,11 +225,11 @@ async def hacer_reserva(oficina_id: str, reserva: Reserva, request: Request):
 
 
 # Operación para buscar una reserva mediante el ID de la sala y actualizar el datetime de la reserva
-@app.put("/oficina/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
-async def update_reserva(reserva_id: str , oficina_id: str, reserva_actualizada: Reserva, request: Request):
-    async with await app.mongodb_client.start_session() as session:
+@app.put("/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
+async def update_reserva(reserva_id: str ,reserva_actualizada: Reserva, request: Request):
+    async with await request.app.mongodb_client.start_session() as session:
         # Buscar la reserva por su ID y nombre del usuario
-        reserva = await app.mongodb_client[oficina_id]["reservas"].find_one({
+        reserva = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one({
             "_id": ObjectId(reserva_id)
             # "nombre_reservante": reserva_actualizada.nombre_reservante
         })
@@ -208,7 +238,7 @@ async def update_reserva(reserva_id: str , oficina_id: str, reserva_actualizada:
             raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
         # Verificar disponibilidad con la nueva fecha
-        if not await verificar_disponibilidad(oficina_id,reserva_actualizada, request):
+        if not await verificar_disponibilidad(reserva_actualizada, request):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"La sala ya está reservada para ese intervalo de tiempo. "
@@ -219,13 +249,13 @@ async def update_reserva(reserva_id: str , oficina_id: str, reserva_actualizada:
         # Iniciar la transacción
         async with session.start_transaction():
             # Actualizar la fecha de la reserva
-            await app.mongodb_client[oficina_id]["reservas"].update_one(
+            await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].update_one(
                 {"_id": ObjectId(reserva_id)},
                 {"$set": {"fecha_inicio": reserva_actualizada.fecha_inicio,
                           "fecha_fin": reserva_actualizada.fecha_fin}}
             )
             # Obtener la reserva actualizada
-            nueva_reserva_actualizada = await app.mongodb_client[oficina_id]["reservas"].find_one(
+            nueva_reserva_actualizada = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one(
                 {"_id": ObjectId(reserva_id)})
 
         # Confirmar la transacción automáticamente al salir del bloque with
@@ -233,10 +263,10 @@ async def update_reserva(reserva_id: str , oficina_id: str, reserva_actualizada:
 
 
 # Detalles de una Reserva Exitosa
-@app.get("/oficina/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
-async def get_reserva(oficina_id: str , reserva_id: str):
+@app.get("/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
+async def get_reserva(reserva_id: str, request: Request):
     try:
-        reserva = await app.mongodb_client[oficina_id]["reservas"].find_one({"_id": ObjectId(reserva_id)})
+        reserva = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one({"_id": ObjectId(reserva_id)})
         if reserva:
             enlaces_reserva = generar_enlaces_reserva(reserva_id)
             return Reserva(**reserva, oid=str(reserva["_id"]), enlaces=enlaces_reserva)
@@ -246,6 +276,7 @@ async def get_reserva(oficina_id: str , reserva_id: str):
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
+app.add_middleware(SessionMiddleware, secret_key="secret_key")
 # # Operación para eliminar una sala por su ID
 # @app.delete("/salas/{sala_id}", response_model=Sala)
 # async def delete_sala(sala_id: str):
@@ -258,30 +289,3 @@ async def get_reserva(oficina_id: str , reserva_id: str):
 #     except Exception as e:
 #         print(f"Error al eliminar sala: {e}")
 #         raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-
-# --------------------------------------FUNCIONES DESCARTADAS----------------------------------------------------------
-
-# # Operación para mostrar lista de salas con SSR
-# @app.get("/lista_salas", response_class=HTMLResponse)
-# async def mostrar_lista_salas(request: Request):
-#     try:
-#         salas_from_db = await app.mongodb_client["florida_center"]["salas"].find().to_list(None)
-#         salas_con_enlaces = []
-
-#         for sala in salas_from_db:
-#             enlaces_sala = generar_enlaces_sala(str(sala["_id"]))
-#             sala_con_enlaces = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
-#             salas_con_enlaces.append(sala_con_enlaces)
-
-#         return templates.TemplateResponse("lista_salas.html", {"request": request, "salas": salas_con_enlaces})
-#     except Exception as e:
-#         print(f"Error al obtener lista de salas: {e}")
-#         raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-# Operación para obtener todas las salas
-# @app.get("/salas", response_model=List[Sala])
-# async def get_salas():
-#     salas_from_db = await app.mongodb_client["florida_center"]["salas"].find().to_list(None)
-#     salas = [Sala(**sala, oid=str(sala["_id"])) for sala in salas_from_db]
-#     return salas

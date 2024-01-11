@@ -1,0 +1,31 @@
+<!-- lista_reservas.html -->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Reservas</title>
+</head>
+<body>
+    <h1>Lista de Reservas</h1>
+    <ul>
+        {% for reserva in reservas %}
+            <li>
+                {{ reserva.sala_id }} - {{ reserva.fecha_inicio }} - {{ reserva.fecha_fin }} - {{ reserva.nombre_reservante }}
+                <!-- Agregar más detalles según sea necesario -->
+            </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Agregar un botón para volver a la lista de salas -->
+    <button onclick="redirectToSalas()">Volver a Salas</button>
+
+    <script>
+        function redirectToSalas() {
+            // Redirigir a la página de salas
+            window.location.href = "/{{ request.cookies.get('oficina_id') }}/salas";
+        }
+    </script>
+</body>
+</html>

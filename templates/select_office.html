@@ -1,23 +1,25 @@
+<!-- select_office.html -->
+
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Salas</title>
+    <title>Select Office</title>
 </head>
 <body>
-    <h1>Lista de Salas</h1>
-    <ul>
-        {% for sala in salas %}
-            <li>
-                {{ sala.numero }} - {{ sala.capacidad }}
-                <ul>
-                    {% for enlace in sala.enlaces %}
-                        <li><a href="{{ enlace.href }}" method="{{ enlace.metodo }}">{{ enlace.rel }}</a></li>
-                    {% endfor %}
-                </ul>
-            </li>
-        {% endfor %}
-    </ul>
+    <h1>Select Office</h1>
+
+    {% for oficina in oficinas_data %}
+        <button class="office-button" oficina_id="{{ oficina.oficina_id }}" onclick="redirectToSalas(this)">{{ oficina.nombre }}</button>
+    {% endfor %}
+
+    <script>
+        function redirectToSalas(button) {
+            const oficinaId = button.getAttribute('oficina_id');
+            document.cookie = `oficina_id=${oficinaId}`;
+            window.location.href = `${oficinaId}/salas`;
+        }
+    </script>
 </body>
 </html>

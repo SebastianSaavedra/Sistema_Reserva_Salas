@@ -3,7 +3,7 @@ from random import sample, randint
 
 # Conectarse a la base de datos
 client = MongoClient("mongodb://localhost:27017/")
-db = client["florida_center"]
+db = client["alto_las_condes"]
 coleccion_salas = db["salas"]
 
 # Número de documentos a insertar
