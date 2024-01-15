@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Información de Sala</title>
@@ -15,30 +16,72 @@
     </ul>
 
     <h2>Reservar Sala</h2>
-    <form id="reservaForm">
+    <form id="reservaForm" onsubmit="hacerReserva(event)">
         <label for="fechaInicio">Fecha de inicio:</label>
-        <input type="datetime-local" id="fechaInicio" name="fechaInicio" required>
-
+        <input type="text" id="fechaInicio" name="fechaInicio" required>
+        
         <label for="fechaFin">Fecha de fin:</label>
-        <input type="datetime-local" id="fechaFin" name="fechaFin" required>
+        <input type="text" id="fechaFin" name="fechaFin" required>
 
         <label for="nombreReservante">Nombre del reservante:</label>
         <input type="text" id="nombreReservante" name="nombreReservante" required>
         
-        <button onclick="window.location.href='{{ sala_data.enlaces[1].url }}'">{{ sala_data.enlaces[1].rel }}</button>
+        <button type="submit">{{ sala_data.enlaces[1].rel }}</button>
     </form>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        function hacerReserva() {
+    function getCookieValue(cookieName) {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === cookieName) {
+                return value;
+            }
+        }
+        return null;  // Si no se encuentra la cookie
+    }
+
+        flatpickr("#fechaInicio", {
+            altInput: true,
+            altFormat: "F j, Y H:i",
+            enableTime: true,
+            noCalendar: false,
+            dateFormat: "Y-m-d H:i",
+            minuteIncrement: 60
+        });
+
+        flatpickr("#fechaFin", {
+            altInput: true,
+            altFormat: "F j, Y H:i",
+            enableTime: true,
+            noCalendar: false,
+            dateFormat: "Y-m-d H:i",
+            minuteIncrement: 60
+        });
+
+        function hacerReserva(event) {
+            event.preventDefault();  // Evita que el formulario se envíe automáticamente
+
             // Obtener datos del formulario
             const fechaInicio = document.getElementById("fechaInicio").value;
             const fechaFin = document.getElementById("fechaFin").value;
             const nombreReservante = document.getElementById("nombreReservante").value;
+            const oficina_id = getCookieValue('oficina_id');
+            const url = window.location.pathname;
+            const partesUrl = url.split('/');
+            const sala_id = partesUrl[partesUrl.length - 1];
+
+            // Verificar si las fechas son válidas
+            if (!fechaInicio || !fechaFin) {
+                alert('Por favor, selecciona fechas válidas.');
+                return;
+            }
 
             // Realizar la solicitud de reserva al backend
             // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
 
-            // Ejemplo usando fetch:
+            // Ejemplo usando fetch:    
             fetch(`/${oficina_id}/reservar/${sala_id}`, {
                 method: 'POST',
                 headers: {
@@ -51,7 +94,12 @@
                     nombre_reservante: nombreReservante,
                 }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error al hacer la reserva: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 // Manejar la respuesta del backend, por ejemplo, mostrar un mensaje de éxito
                 alert('Reserva exitosa!');

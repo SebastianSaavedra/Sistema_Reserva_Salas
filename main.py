@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Cookie, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.security import OAuth2AuthorizationCodeBearer
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
 from bson import ObjectId
 from pydantic import BaseModel
@@ -83,8 +84,11 @@ async def verificar_disponibilidad(reserva: Reserva, request: Request):
 
     except Exception as e:
         # Manejar errores
-        print(f"Error al verificar disponibilidad: {e}")
+        # raise e
         return False
+
+async def ordenar_salas_ascendente(salas):
+    return sorted(salas, key=lambda x: x.numero)
 
 async def obtener_salas(db):
     return await db["salas"].find().to_list(None)
@@ -105,11 +109,12 @@ async def select_oficina(request: Request):
 @app.get("/{oficina_id}/salas", response_model=List[Sala], response_class=HTMLResponse)
 async def mostrar_lista_salas(request: Request):
     try:
-        # print(request.cookies.get("oficina_id"))
         salas_from_db = await obtener_salas(request.app.mongodb_client[request.cookies.get("oficina_id")])
+        salas_ordenadas = sorted(salas_from_db, key=lambda x: x.get("numero", 0))
+
         salas_con_enlaces = []
 
-        for sala in salas_from_db:
+        for sala in salas_ordenadas:
             enlaces_sala = generar_enlaces_sala(request,str(sala["_id"]))
             sala_con_enlaces = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
             salas_con_enlaces.append(sala_con_enlaces)
@@ -193,34 +198,36 @@ async def get_reservas_by_user(nombre_reservante: str, request: Request):
 
 # Operación para hacer una reserva en la base de datos
 @app.post("/{oficina_id}/reservar/{sala_id}", response_model=Reserva)
-async def hacer_reserva(reserva: Reserva, request: Request):
+async def hacer_reserva(request: Request,sala_id: str,reserva: Reserva):
+    print("La función hacer_reserva ha sido ejecutada")
     # Iniciar una transacción
     async with await request.app.mongodb_client.start_session() as session:
         try:
+            reserva.sala_id = sala_id
             if not await verificar_disponibilidad(reserva, request):
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=400,
                     detail="La sala ya está reservada para ese intervalo de tiempo."
                 )
 
-            # Crear el documento de reserva
-            nueva_reserva = {
-                "sala_id": reserva.sala_id,
-                "fecha_inicio": reserva.fecha_inicio,
-                "fecha_fin": reserva.fecha_fin,
-                "nombre_reservante": reserva.nombre_reservante
-            }
-
             # Insertar reserva en la colección dentro de la transacción
-            result = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].insert_one(nueva_reserva, session=session)
+            result = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].insert_one(reserva.model_dump(exclude={'enlaces'}), session=session)
 
-            nueva_reserva["_id"] = str(result.inserted_id)
-            enlaces_reserva = generar_enlaces_reserva(nueva_reserva["_id"])
-            return Reserva(**nueva_reserva, enlaces=enlaces_reserva)
+            reserva._id = str(result.inserted_id)
+            enlaces_reserva = generar_enlaces_reserva(request, reserva._id)
+            nueva_reserva = Reserva(
+                sala_id=reserva.sala_id,
+                fecha_inicio=reserva.fecha_inicio,
+                fecha_fin=reserva.fecha_fin,
+                nombre_reservante=reserva.nombre_reservante,
+                enlaces=enlaces_reserva
+            )
+            return nueva_reserva
         except Exception as e:
             # Manejar errores de la transacción
             print(f"Error al hacer reserva: {e}")
             raise HTTPException(status_code=500, detail="Error interno del servidor")
+
 
 
 
