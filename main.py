@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Cookie, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
@@ -28,6 +28,7 @@ class Reserva(BaseModel):
     fecha_fin: datetime
     nombre_reservante: str
     enlaces: List[Dict[str, Union[str, Dict[str, str]]]] = []
+    oid: Optional[str]
 
 
 def generar_enlaces_sala(request: Request,sala_id: str) -> List[Dict[str, str]]:
@@ -163,7 +164,7 @@ async def get_reserva(reserva_id: str, request: Request):
         reserva = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one({"_id": ObjectId(reserva_id)})
         if reserva:
             enlaces_reserva = generar_enlaces_reserva(request, reserva_id)
-            return Reserva(**reserva, oid=str(reserva["_id"]), enlaces=enlaces_reserva)
+            return Reserva(**reserva, enlaces=enlaces_reserva)
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     except Exception as e:
         print(f"Error al obtener reserva: {e}")
@@ -197,9 +198,8 @@ async def get_reservas_by_user(nombre_reservante: str, request: Request):
     
 
 # Operación para hacer una reserva en la base de datos
-@app.post("/{oficina_id}/reservar/{sala_id}", response_model=Reserva)
+@app.post("/{oficina_id}/reservar/{sala_id}")
 async def hacer_reserva(request: Request,sala_id: str,reserva: Reserva):
-    print("La función hacer_reserva ha sido ejecutada")
     # Iniciar una transacción
     async with await request.app.mongodb_client.start_session() as session:
         try:
@@ -211,24 +211,13 @@ async def hacer_reserva(request: Request,sala_id: str,reserva: Reserva):
                 )
 
             # Insertar reserva en la colección dentro de la transacción
-            result = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].insert_one(reserva.model_dump(exclude={'enlaces'}), session=session)
+            result = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].insert_one(reserva.model_dump(exclude={'enlaces','oid'}), session=session)
 
-            reserva._id = str(result.inserted_id)
-            enlaces_reserva = generar_enlaces_reserva(request, reserva._id)
-            nueva_reserva = Reserva(
-                sala_id=reserva.sala_id,
-                fecha_inicio=reserva.fecha_inicio,
-                fecha_fin=reserva.fecha_fin,
-                nombre_reservante=reserva.nombre_reservante,
-                enlaces=enlaces_reserva
-            )
-            return nueva_reserva
+            return RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/reservas/{result.inserted_id}", status_code=303)
         except Exception as e:
             # Manejar errores de la transacción
             print(f"Error al hacer reserva: {e}")
             raise HTTPException(status_code=500, detail="Error interno del servidor")
-
-
 
 
 # Operación para buscar una reserva mediante el ID de la sala y actualizar el datetime de la reserva
