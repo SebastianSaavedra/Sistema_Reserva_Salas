@@ -1,0 +1,126 @@
+<!-- reserva_exitosa.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva Exitosa</title>
+</head>
+<body>
+    <h1>Reserva Exitosa</h1>
+
+    <h2>Detalles de la Reserva</h2>
+    <ul>
+        <li><strong>Numero Sala Reservada:</strong> {{ sala_data.numero }}</li>
+        <li><strong>Fecha de Inicio:</strong> {{ reserva_data.fecha_inicio }}</li>
+        <li><strong>Fecha de Fin:</strong> {{ reserva_data.fecha_fin }}</li>
+        <li><strong>Nombre del Reservante:</strong> {{ reserva_data.nombre_reservante }}</li>
+        <!-- Agregar más campos según sea necesario -->
+    </ul>
+
+    <button onclick="window.location.href = '{{ reserva_data.enlaces[0].url }}' ">Volver a Salas</button>
+    <button onclick="mostrarFormularioActualizar()">Actualizar Horario de Reservas</button>
+    
+    <div id="formularioActualizar" style="display: none;">
+        <form id="reservaForm" onsubmit="actualizarReserva(event)">
+            <label for="fechaInicio">Fecha de inicio:</label>
+            <input type="text" id="fechaInicio" name="fechaInicio" required>
+            
+            <label for="fechaFin">Fecha de fin:</label>
+            <input type="text" id="fechaFin" name="fechaFin" required>
+            
+            <button type="submit">Actualizar Horario</button>
+        </form>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        function getCookieValue(cookieName) {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === cookieName) {
+                return value;
+            }
+        }
+        return null;  // Si no se encuentra la cookie
+    }
+    
+    
+        function mostrarFormularioActualizar() {
+            const formularioActualizar = document.getElementById('formularioActualizar');
+            formularioActualizar.style.display = 'block';
+    
+            flatpickr("#fechaInicio", {
+                altInput: true,
+                altFormat: "F j, Y H:i",
+                enableTime: true,
+                time_24hr: true,
+                noCalendar: false,
+                dateFormat: "Y-m-d H:i",
+                minuteIncrement: 60
+            });
+
+            flatpickr("#fechaFin", {
+                altInput: true,
+                altFormat: "F j, Y H:i",
+                enableTime: true,
+                time_24hr: true,
+                noCalendar: false,
+                dateFormat: "Y-m-d H:i",
+                minuteIncrement: 60
+            });
+        }
+
+        function actualizarReserva(event) {
+            event.preventDefault();  // Evita que el formulario se envíe automáticamente
+
+            // Obtener datos del formulario
+            const fechaInicio = document.getElementById("fechaInicio").value;
+            const fechaFin = document.getElementById("fechaFin").value;
+            // const nombreReservante = reserva_data.nombre_reservante;
+            const oficina_id = getCookieValue('oficina_id');
+
+            // Verificar si introdujo fechas
+            if (!fechaInicio || !fechaFin) {
+                alert('Por favor, rellena los campos.');
+                return;
+            }
+
+            // Realizar la solicitud de reserva al backend
+            // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
+
+            // Ejemplo usando fetch:    
+            fetch(`/${oficina_id}/reservar/{{reserva_data._id}}/actualizar`, {
+                method: 'PUT',
+                redirect: 'follow',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin,
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error al actualizar la reserva: ${response.statusText}`);
+                }
+                if (response.redirected) {
+                    alert('Reserva Exitosa!');
+                    window.location.href = response.url;  // or, location.replace(res.url); 
+                    return;
+                } 
+                else
+                    return response.json();
+            })
+            .catch(error => {
+                console.error('Error al actualizar la reserva: ', error);
+                // Manejar errores, por ejemplo, mostrar un mensaje de error
+                alert('Error al actualizar la reserva: ', error);
+            });
+        }
+    </script>
+</body>
+</html>

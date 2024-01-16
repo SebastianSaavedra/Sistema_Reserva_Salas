@@ -1,6 +1,6 @@
 <!-- info_sala_individual.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <meta charset="UTF-8">
@@ -26,7 +26,7 @@
         <label for="nombreReservante">Nombre del reservante:</label>
         <input type="text" id="nombreReservante" name="nombreReservante" required>
         
-        <button type="submit">{{ sala_data.enlaces[1].rel }}</button>
+        <button type="submit">{{ sala_data.enlaces[2].rel }}</button>
     </form>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -70,13 +70,10 @@
             const fechaFin = document.getElementById("fechaFin").value;
             const nombreReservante = document.getElementById("nombreReservante").value;
             const oficina_id = getCookieValue('oficina_id');
-            const url = window.location.pathname;
-            const partesUrl = url.split('/');
-            const sala_id = partesUrl[partesUrl.length - 1];
 
-            // Verificar si las fechas son válidas
+            // Verificar si introdujo fechas
             if (!fechaInicio || !fechaFin) {
-                alert('Por favor, selecciona fechas válidas.');
+                alert('Por favor, rellena los campos.');
                 return;
             }
 
@@ -84,8 +81,9 @@
             // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
 
             // Ejemplo usando fetch:    
-            fetch(`/${oficina_id}/reservar/${sala_id}`, {
+            fetch(`/${oficina_id}/reservar/{{sala_id}}`, {
                 method: 'POST',
+                redirect: 'follow',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -95,16 +93,18 @@
                     fecha_fin: fechaFin,
                     nombre_reservante: nombreReservante,
                 }),
-                redirect: 'follow',
             })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Error al hacer la reserva: ${response.statusText}`);
                 }
-                return response.json();
-            })
-            .then(data => {
-                alert("Reserva exitosa!");
+                if (response.redirected) {
+                    alert('Reserva Exitosa!');
+                    window.location.href = response.url;  // or, location.replace(res.url); 
+                    return;
+                } 
+                else
+                    return response.json();
             })
             .catch(error => {
                 console.error('Error al hacer la reserva:', error);
