@@ -193,11 +193,27 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
 async def get_reservas_by_user(nombre_reservante: str, request: Request):
     try:
         reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": nombre_reservante}).to_list(None)
-    
-        return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
+        if reservas:
+            salas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find().to_list(None)
+            reservas_combinadas = []
 
+            for reserva in reservas:
+                sala_info = next((s for s in salas if str(s["_id"]) == reserva["sala_id"]), None)
+                reserva_combinada = {
+                        "numero_sala": sala_info.get("numero"),
+                        "fecha_inicio": reserva.get("fecha_inicio"),
+                        "fecha_fin": reserva.get("fecha_fin"),
+                        # Agregar más campos según sea necesario
+                    }
+                reservas_combinadas.append(reserva_combinada)
+                print(reservas_combinadas) 
+
+            enlaces = [generar_enlaces_reserva(request, str(reserva["_id"])) for reserva in reservas]
+            return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas, "enlaces": enlaces})
+        return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
+    
     except Exception as e:
-        print(f"Error al obtener reservas: {e}")
+        print(f"Error al obtener reservas del usuario: {e}")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
     
 
