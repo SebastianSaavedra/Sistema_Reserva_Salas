@@ -21,6 +21,7 @@
 
     <button onclick="window.location.href = '{{ reserva_data.enlaces[0].url }}' ">Volver a Salas</button>
     <button onclick="mostrarFormularioActualizar()">Actualizar Horario de Reservas</button>
+    <button onclick="mostrarFormularioActualizar()">Eliminar Reserva</button>
     
     <div id="formularioActualizar" style="display: none;">
         <form id="reservaForm" onsubmit="actualizarReserva(event)">
@@ -81,6 +82,7 @@
             const fechaFin = document.getElementById("fechaFin").value;
             // const nombreReservante = reserva_data.nombre_reservante;
             const oficina_id = getCookieValue('oficina_id');
+            console.log("El id de la sala reservada es: {{ reserva_id }}")
 
             // Verificar si introdujo fechas
             if (!fechaInicio || !fechaFin) {
@@ -92,15 +94,17 @@
             // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
 
             // Ejemplo usando fetch:    
-            fetch(`/${oficina_id}/reservar/{{reserva_data._id}}/actualizar`, {
+            fetch(`/${oficina_id}/reservas/{{ reserva_id }}/actualizar`, {
                 method: 'PUT',
                 redirect: 'follow',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    sala_id: '{{ reserva_id }}',
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin,
+                    nombre_reservante: '{{ reserva_data.nombre_reservante }}',
                 }),
             })
             .then(response => {
@@ -108,7 +112,7 @@
                     throw new Error(`Error al actualizar la reserva: ${response.statusText}`);
                 }
                 if (response.redirected) {
-                    alert('Reserva Exitosa!');
+                    alert('Modificación de reserva exitosa!');
                     window.location.href = response.url;  // or, location.replace(res.url); 
                     return;
                 } 
