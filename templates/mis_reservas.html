@@ -17,7 +17,7 @@
                     <th>Fecha de Inicio</th>
                     <th>Fecha de Fin</th>
                     <!-- <th>Nombre del Reservante</th> -->
-                    <th>Enlaces</th>
+                    <!-- <th>Enlaces</th> -->
                     <!-- Agregar más campos según sea necesario -->
                 </tr>
             </thead>
@@ -27,12 +27,9 @@
                         <td>{{ reserva.numero_sala }}</td>
                         <td>{{ reserva.fecha_inicio }}</td>
                         <td>{{ reserva.fecha_fin }}</td>
-                        <!-- Agregar más campos según sea necesario -->
                         <td>
-                            {% for enlace in enlaces[loop.index0] %}
-                                <a href="{{ enlace.url }}">{{ enlace.rel }}</a>
-                                {% if not loop.last %}, {% endif %}
-                            {% endfor %}
+                            {{ enlaces[1].rel }}
+                            {{ enlaces[2].rel }}
                         </td>
                     </tr>
                 {% endfor %}
@@ -42,6 +39,6 @@
         <p>No se encontraron reservas para este usuario.</p>
     {% endif %}
 
-    <button onclick="window.location.href = '/ruta_a_otra_pagina'">Volver</button>
+    <button onclick="window.location.href = '{{ enlaces[0].url }}'">Volver</button>
 </body>
 </html>

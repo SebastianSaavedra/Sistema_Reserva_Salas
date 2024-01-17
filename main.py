@@ -166,6 +166,7 @@ async def get_reserva(reserva_id: str, request: Request):
             enlaces_reserva = generar_enlaces_reserva(request, reserva_id)
             reserva_data = Reserva(**reserva, enlaces=enlaces_reserva)
             sala_data = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(reserva_data.sala_id)})
+            print(f"El usuario es: {request.cookies}")
             return templates.TemplateResponse(
                 "datos_reserva.html",
                 {"request": request, "reserva_data": reserva_data, "oficina_id": request.cookies.get("oficina_id"), "sala_data": sala_data, "reserva_id": reserva_id}
@@ -189,10 +190,10 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operación para obtener todas las reservas de un usuario por su nombre
-@app.get("/{oficina_id}/mis_reservas/{nombre_reservante}", response_class=HTMLResponse)
-async def get_reservas_by_user(nombre_reservante: str, request: Request):
+@app.get("/{oficina_id}/mis_reservas", response_class=HTMLResponse)
+async def get_reservas_by_user(request: Request):
     try:
-        reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": nombre_reservante}).to_list(None)
+        reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": request.cookies.get("usuario")}).to_list(None)
         if reservas:
             salas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find().to_list(None)
             reservas_combinadas = []
@@ -206,9 +207,8 @@ async def get_reservas_by_user(nombre_reservante: str, request: Request):
                         # Agregar más campos según sea necesario
                     }
                 reservas_combinadas.append(reserva_combinada)
-                print(reservas_combinadas) 
 
-            enlaces = [generar_enlaces_reserva(request, str(reserva["_id"])) for reserva in reservas]
+            enlaces = [enlace for enlace in generar_enlaces_reserva(request, str(reserva["_id"])) if enlace.get("rel") in ["Volver a Salas", "Actualizar horario de reservas", "Eliminar reserva"]]
             return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas, "enlaces": enlaces})
         return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
     
@@ -233,7 +233,12 @@ async def hacer_reserva(request: Request,sala_id: str,reserva: Reserva):
             # Insertar reserva en la colección dentro de la transacción
             result = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].insert_one(reserva.model_dump(exclude={'enlaces'}), session=session)
 
-            return RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/reservas/{result.inserted_id}", status_code=303)
+            response = RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/reservas/{result.inserted_id}", status_code=303)
+
+            ###################### ESTO DEBE SER ELIMINADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+            response.set_cookie(key="usuario", value=reserva.nombre_reservante)
+            ###################### ESTO DEBE SER ELIMINADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+            return response
         except Exception as e:
             # Manejar errores de la transacción
             print(f"Error al hacer reserva: {e}")
@@ -278,18 +283,14 @@ async def update_reserva(reserva_id: str ,reserva_actualizada: Reserva, request:
         return RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/reservas/{reserva_id}", status_code=303)
         # return Reserva(**nueva_reserva_actualizada, oid=str(nueva_reserva_actualizada["_id"]))
 
-# Operación para eliminar una sala por su ID
+# Operación para eliminar una reserva por su ID
 @app.delete("/{oficina_id}/reservas/{reserva_id}/eliminar")
-async def delete_reserva(reserva_id: str , request: Request):
+async def delete_reserva(reserva_id: str, request: Request):
     try:
-        reserva_eliminada = await app.mongodb_client[request.cookies.get('oficina_id')]["reservas"].find_one_and_delete(
-            {"_id": ObjectId(reserva_id)})
-        print(reserva_eliminada)
-        if reserva_eliminada:
-            return reserva_eliminada
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
+        await app.mongodb_client[request.cookies.get('oficina_id')]["reservas"].find_one_and_delete({"_id": ObjectId(reserva_id)})
+        return RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/mis_reservas", status_code=303)
     except Exception as e:
         print(f"Error al eliminar sala: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
 
 app.add_middleware(SessionMiddleware, secret_key="secret_key")

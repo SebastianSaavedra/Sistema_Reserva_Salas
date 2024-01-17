@@ -80,15 +80,15 @@
             // Realizar la solicitud de reserva al backend
             // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
 
-            // Ejemplo usando fetch:    
-            fetch(`/${oficina_id}/reservar/{{sala_id}}`, {
+            // Ejemplo usando fetch:   
+            fetch(`/{{ oficina_id }}/reservar/{{ sala_id }}`, {
                 method: 'POST',
                 redirect: 'follow',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    sala_id: sala_id,
+                    sala_id: '{{sala_id}}',
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin,
                     nombre_reservante: nombreReservante,

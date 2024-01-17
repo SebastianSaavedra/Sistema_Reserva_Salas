@@ -1,4 +1,4 @@
-<!-- reserva_exitosa.html -->
+<!-- datos_reserva.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -21,7 +21,7 @@
 
     <button onclick="window.location.href = '{{ reserva_data.enlaces[0].url }}' ">Volver a Salas</button>
     <button onclick="mostrarFormularioActualizar()">Actualizar Horario de Reservas</button>
-    <button onclick="mostrarFormularioActualizar()">Eliminar Reserva</button>
+    <button onclick="confirmarEliminarReserva()">Eliminar Reserva</button>
     
     <div id="formularioActualizar" style="display: none;">
         <form id="reservaForm" onsubmit="actualizarReserva(event)">
@@ -82,7 +82,6 @@
             const fechaFin = document.getElementById("fechaFin").value;
             // const nombreReservante = reserva_data.nombre_reservante;
             const oficina_id = getCookieValue('oficina_id');
-            console.log("El id de la sala reservada es: {{ reserva_id }}")
 
             // Verificar si introdujo fechas
             if (!fechaInicio || !fechaFin) {
@@ -94,7 +93,7 @@
             // Puedes usar fetch o axios para realizar una solicitud POST al endpoint de reserva
 
             // Ejemplo usando fetch:    
-            fetch(`/${oficina_id}/reservas/{{ reserva_id }}/actualizar`, {
+            fetch(`/{{ oficina_id }}/reservas/{{ reserva_id }}/actualizar`, {
                 method: 'PUT',
                 redirect: 'follow',
                 headers: {
@@ -125,6 +124,46 @@
                 alert('Error al actualizar la reserva: ', error);
             });
         }
+
+
+        function confirmarEliminarReserva() {
+        // Muestra una ventana emergente con la confirmación
+        const confirmacion = window.confirm("¿Seguro que deseas eliminar tu reserva?");
+        
+        // Si el usuario hizo clic en "Aceptar" en la ventana emergente
+        if (confirmacion) {
+            // Llama a la función para eliminar la reserva
+            eliminarReserva();
+        }
+    }
+
+    function eliminarReserva() {
+        // Realiza la solicitud de eliminación al backend
+        fetch(`/{{ oficina_id }}/reservas/{{ reserva_id }}/eliminar`, {
+            method: 'DELETE',
+            redirect: 'follow',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (!response.ok) {
+                    throw new Error(`${response.statusText}`);
+                }
+                if (response.redirected) {
+                    alert('Eliminación de reserva exitosa!');
+                    window.location.href = response.url;  // or, location.replace(res.url); 
+                    return;
+                } 
+                else
+                    return response.json();
+        })
+        .catch(error => {
+            console.error('Error al eliminar la reserva: ', error);
+            // Manejar errores, por ejemplo, mostrar un mensaje de error al usuario
+            alert('Error al eliminar la reserva: ' + error.message);
+        });
+    }
     </script>
 </body>
 </html>
