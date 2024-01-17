@@ -28,8 +28,8 @@
                         <td>{{ reserva.fecha_inicio }}</td>
                         <td>{{ reserva.fecha_fin }}</td>
                         <td>
-                            {{ enlaces[1].rel }}
-                            {{ enlaces[2].rel }}
+                            {{ reserva.enlaces[0].rel }}
+                            {{ reserva.enlaces[1].rel }}
                         </td>
                     </tr>
                 {% endfor %}
@@ -39,6 +39,6 @@
         <p>No se encontraron reservas para este usuario.</p>
     {% endif %}
 
-    <button onclick="window.location.href = '{{ enlaces[0].url }}'">Volver</button>
+    <button onclick="window.location.href = '/{{ request.cookies.get(oficina_id) }}/salas'">Volver a Salas</button>
 </body>
 </html>

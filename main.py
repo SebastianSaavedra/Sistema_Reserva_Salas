@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Dict, Union, Optional
 from starlette.middleware.sessions import SessionMiddleware
+import traceback
   
 app = FastAPI()
 mongo_db_url = "mongodb://localhost:27017"
@@ -42,7 +43,7 @@ def generar_enlaces_reserva(request: Request, reserva_id: str) -> List[Dict[str,
         {"rel": "Volver a Salas", "url": f"/{request.cookies.get("oficina_id")}/salas", "metodo": "GET"},
         {"rel": "Ver Reservas de la sala", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/todas", "metodo": "GET"},
         {"rel": "Reservar", "url": f"/{request.cookies.get("oficina_id")}/reservar/{reserva_id}", "metodo": "POST"},
-        {"rel": "Actualizar horario de reservas", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/actualizar", "metodo": "PUT"},
+        {"rel": "Actualizar horario de reserva", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/actualizar", "metodo": "PUT"},
         {"rel": "Eliminar reserva", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/eliminar", "metodo": "DELETE"}
         # Agregar mas enlaces segun necesidades
     ]
@@ -200,21 +201,30 @@ async def get_reservas_by_user(request: Request):
 
             for reserva in reservas:
                 sala_info = next((s for s in salas if str(s["_id"]) == reserva["sala_id"]), None)
+
+                # Generar enlaces específicos para cada reserva
+                enlaces_reserva = [
+                    enlace for enlace in generar_enlaces_reserva(request, str(reserva["_id"]))
+                    if enlace.get("rel") in ["Actualizar horario de reserva", "Eliminar reserva"]
+                ]
+                # Crear un diccionario combinado que incluya la información de la reserva y los enlaces
                 reserva_combinada = {
-                        "numero_sala": sala_info.get("numero"),
-                        "fecha_inicio": reserva.get("fecha_inicio"),
-                        "fecha_fin": reserva.get("fecha_fin"),
-                        # Agregar más campos según sea necesario
-                    }
+                    "numero_sala": sala_info.get("numero"),
+                    "fecha_inicio": reserva.get("fecha_inicio"),
+                    "fecha_fin": reserva.get("fecha_fin"),
+                    "enlaces": enlaces_reserva,
+                    # Agregar más campos según sea necesario
+                }
                 reservas_combinadas.append(reserva_combinada)
 
-            enlaces = [enlace for enlace in generar_enlaces_reserva(request, str(reserva["_id"])) if enlace.get("rel") in ["Volver a Salas", "Actualizar horario de reservas", "Eliminar reserva"]]
-            return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas, "enlaces": enlaces})
+            return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas})
         return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
     
     except Exception as e:
-        print(f"Error al obtener reservas del usuario: {e}")
+        # Imprimir la información completa de la excepción, incluida la traza
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
     
 
 # Operación para hacer una reserva en la base de datos
