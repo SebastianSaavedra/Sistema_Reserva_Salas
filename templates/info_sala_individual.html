@@ -27,7 +27,10 @@
         <input type="text" id="nombreReservante" name="nombreReservante" required>
         
         <button type="submit">{{ sala_data.enlaces[2].rel }}</button>
-    </form>
+    </form> 
+
+    <!-- Agregar después del formulario -->
+    <div id="horariosDisponibles"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
@@ -40,8 +43,9 @@
             }
         }
         return null;  // Si no se encuentra la cookie
-    }
+        }
 
+        // Permite creaar el calendario y horario mas modular
         flatpickr("#fechaInicio", {
             altInput: true,
             altFormat: "F j, Y H:i",
@@ -61,6 +65,43 @@
             dateFormat: "Y-m-d H:i",
             minuteIncrement: 60
         });
+
+        // Obtener el elemento donde se mostraran los horarios disponibles
+        const horariosDisponiblesElement = document.getElementById("horariosDisponibles");
+
+        // Manejar cambios en las fechas
+        document.getElementById("fechaInicio").addEventListener("change", actualizarHorariosDisponibles);
+        document.getElementById("fechaFin").addEventListener("change", actualizarHorariosDisponibles);
+
+        // Función para actualizar los horarios disponibles
+        async function actualizarHorariosDisponibles() {
+            const fechaInicio = document.getElementById("fechaInicio").value;
+            const fechaFin = document.getElementById("fechaFin").value;
+
+            // Verificar si las fechas están presentes
+            if (!fechaInicio || !fechaFin) {
+                return;
+            }
+
+            try {
+                // Realizar la solicitud al backend para obtener los horarios disponibles
+                const url = new URL(`/{{ oficina_id }}/horarios_disponibles`, window.location.origin);
+                url.searchParams.append('fechaInicio', fechaInicio);
+                url.searchParams.append('fechaFin', fechaFin);
+                url.searchParams.append('sala_id', '{{sala_id}}');
+
+                const response = await fetch(url);
+                const horariosDisponibles = await response.json();
+
+                // Mostrar los horarios disponibles en la página
+                horariosDisponiblesElement.innerText = JSON.stringify(horariosDisponibles);
+            } catch (error) {
+                console.error('Error al obtener horarios disponibles:', error);
+                // Manejar errores, por ejemplo, mostrar un mensaje de error
+                horariosDisponiblesElement.innerText = ('Error al obtener horarios disponibles:', error);
+            }
+        }
+
 
         function hacerReserva(event) {
             event.preventDefault();  // Evita que el formulario se envíe automáticamente

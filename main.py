@@ -5,7 +5,7 @@ from fastapi.security import OAuth2AuthorizationCodeBearer
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
 from bson import ObjectId
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Union, Optional
 from starlette.middleware.sessions import SessionMiddleware
 import traceback
@@ -167,7 +167,6 @@ async def get_reserva(reserva_id: str, request: Request):
             enlaces_reserva = generar_enlaces_reserva(request, reserva_id)
             reserva_data = Reserva(**reserva, enlaces=enlaces_reserva)
             sala_data = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(reserva_data.sala_id)})
-            print(f"El usuario es: {request.cookies}")
             return templates.TemplateResponse(
                 "datos_reserva.html",
                 {"request": request, "reserva_data": reserva_data, "oficina_id": request.cookies.get("oficina_id"), "sala_data": sala_data, "reserva_id": reserva_id}
@@ -225,7 +224,40 @@ async def get_reservas_by_user(request: Request):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-    
+# Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
+@app.get("/{oficina_id}/horarios_disponibles")
+async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime,sala_id: str, request: Request):
+    try:
+        intervalo = timedelta(minutes=60)
+        rango_am = fechaInicio.replace(hour=8, minute=0, second=0)
+        rango_pm = fechaFin.replace(hour=23, minute=59, second=59)
+
+        print(f"Fecha de inicio: {fechaInicio} y la fecha de fin es: {fechaFin}")
+        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
+            "sala_id": sala_id,
+            "fecha_inicio": {"$gte": fechaInicio.replace(hour=0, minute=0, second=0),
+                             "$lt": fechaInicio.replace(hour=23, minute=59, second=59)}
+        }).to_list(None)
+
+        print(f"reservas dia: {reservas_dia}")
+
+        horarios_disponibles = []
+
+        while rango_am <= rango_pm:
+            ocupado = any(
+                reserva["fecha_fin"].replace(tzinfo=None) > rango_am and
+                reserva["fecha_inicio"].replace(tzinfo=None) < rango_am + intervalo
+                for reserva in reservas_dia
+            )
+            if not ocupado:
+                horarios_disponibles.append(rango_am.strftime("%H:%M"))
+
+            rango_am += intervalo
+
+        print(f"Horarios no reservados: {horarios_disponibles}")
+        return {"horarios_disponibles": horarios_disponibles}
+    except Exception as e:
+        return {f"Error al obtener horarios disponibles: {e}"}  
 
 # Operación para hacer una reserva en la base de datos
 @app.post("/{oficina_id}/reservar/{sala_id}")
