@@ -55,11 +55,7 @@ async def verificar_disponibilidad(reserva: Reserva, request: Request):
         print(f"hora fin: {reserva.fecha_fin}")
 
         # Obtener todas las reservas para la sala y el día especificado
-        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
-            "sala_id": reserva.sala_id,
-            "fecha_inicio": {"$gte": reserva.fecha_inicio.replace(hour=0, minute=0, second=0),
-                             "$lt": reserva.fecha_inicio.replace(hour=23, minute=59, second=59)}
-        }).to_list(None)
+        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"sala_id": reserva.sala_id}).to_list(None)
         print(f"reservas del día: {len(reservas_dia)}")
 
         print(f"reservas del día: {reservas_dia}")
@@ -234,15 +230,12 @@ async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime
 
         print(f"Fecha de inicio: {fechaInicio} y la fecha de fin es: {fechaFin}")
         reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
-            "sala_id": sala_id,
-            "fecha_inicio": {"$gte": fechaInicio.replace(hour=0, minute=0, second=0),
-                             "$lt": fechaInicio.replace(hour=23, minute=59, second=59)}
+            "sala_id": sala_id
         }).to_list(None)
 
         print(f"reservas dia: {reservas_dia}")
 
         horarios_disponibles = []
-
         while rango_am <= rango_pm:
             ocupado = any(
                 reserva["fecha_fin"].replace(tzinfo=None) > rango_am and

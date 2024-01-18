@@ -139,7 +139,7 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    sala_id: '{{ reserva_id }}',
+                    sala_id: '{{ reserva_data.sala_id }}',
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin,
                     nombre_reservante: '{{ reserva_data.nombre_reservante }}',
