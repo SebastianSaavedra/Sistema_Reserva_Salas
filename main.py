@@ -53,16 +53,26 @@ async def verificar_disponibilidad(reserva: Reserva, request: Request):
         print(f"ID de la sala: {reserva.sala_id}")
         print(f"hora inicio: {reserva.fecha_inicio}")
         print(f"hora fin: {reserva.fecha_fin}")
+        print(f"Path params: {request.path_params}")
+        horarios_disponibles = await obtener_horarios_disponibles(
+                    sala_id=reserva.sala_id,
+                    request=request
+                )
+        print(f"Horarios disponibles: {horarios_disponibles}")
 
         # Obtener todas las reservas para la sala y el día especificado
         reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"sala_id": reserva.sala_id}).to_list(None)
-        print(f"reservas del día: {len(reservas_dia)}")
-
-        print(f"reservas del día: {reservas_dia}")
-        print(f"La request es: {request.method}")
-        # Si no hay reservas para el día, la sala está disponible para cualquier horario
-        if len(reservas_dia) == 0 or (request.method == "PUT" and len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante):
+        print(f"Cantidad de reservas del día: {len(reservas_dia)}")
+        print(f"Info de reservas del día: {reservas_dia}")
+        if len(reservas_dia) == 0: # Si no hay reservas para el día, la sala está disponible para cualquier horario
             return True
+
+        print(f"La request es: {request.method}")
+        if request.method == "PUT":
+            if len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante: return True
+            for r in reservas_dia:
+                if str(r['_id']) == request.path_params['reserva_id'] and r["fecha_inicio"] <= reserva.fecha_inicio and r["fecha_fin"] >= reserva.fecha_fin: return True
+
 
         # Verificar si hay reservas existentes para el intervalo de tiempo especificado
         reservas_intervalo = [r for r in reservas_dia
@@ -222,17 +232,16 @@ async def get_reservas_by_user(request: Request):
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
 @app.get("/{oficina_id}/horarios_disponibles")
-async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime,sala_id: str, request: Request):
+async def obtener_horarios_disponibles(sala_id: str, request: Request):
     try:
         intervalo = timedelta(minutes=60)
-        rango_am = fechaInicio.replace(hour=8, minute=0, second=0)
-        rango_pm = fechaFin.replace(hour=23, minute=59, second=59)
+        rango_am = datetime(hour=8, minute=0, second=0)
+        rango_pm = datetime(hour=23, minute=59, second=59)
 
-        print(f"Fecha de inicio: {fechaInicio} y la fecha de fin es: {fechaFin}")
+        # print(f"Fecha de inicio: {fechaInicio} y la fecha de fin es: {fechaFin}")
         reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
             "sala_id": sala_id
         }).to_list(None)
-
         print(f"reservas dia: {reservas_dia}")
 
         horarios_disponibles = []
@@ -247,8 +256,10 @@ async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime
 
             rango_am += intervalo
 
+        # horarios_disponibles.append(fechaFin.strftime("%H:%M"))
+        # horarios_disponibles_ordenados = sorted(horarios_disponibles)
         print(f"Horarios no reservados: {horarios_disponibles}")
-        return {"horarios_disponibles": horarios_disponibles}
+        return horarios_disponibles
     except Exception as e:
         return {f"Error al obtener horarios disponibles: {e}"}  
 

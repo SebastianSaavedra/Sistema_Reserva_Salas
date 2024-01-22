@@ -36,7 +36,8 @@
     </div>
 
     <!-- Agregar después del formulario -->
-    <div id="horariosDisponibles"></div>
+    <div id="horariosDisponiblesInicio"></div>
+    <div id="horariosDisponiblesFin"></div>
     
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
@@ -62,6 +63,9 @@
                 enableTime: true,
                 time_24hr: true,
                 noCalendar: false,
+                minDate: "today",
+                minTime: "08:00",
+                maxTime: "22:30",
                 dateFormat: "Y-m-d H:i",
                 minuteIncrement: 60
             });
@@ -72,13 +76,17 @@
                 enableTime: true,
                 time_24hr: true,
                 noCalendar: false,
+                minDate: "today",
+                minTime: "08:00",
+                maxTime: "22:30",
                 dateFormat: "Y-m-d H:i",
                 minuteIncrement: 60
             });
         }
 
         // Obtener el elemento donde se mostraran los horarios disponibles
-        const horariosDisponiblesElement = document.getElementById("horariosDisponibles");
+        const horariosDisponiblesDeInicioElement = document.getElementById("horariosDisponiblesInicio");
+        const horariosDisponiblesDeFinElement = document.getElementById("horariosDisponiblesFin");
 
         // Manejar cambios en las fechas
         document.getElementById("fechaInicio").addEventListener("change", actualizarHorariosDisponibles);
@@ -105,12 +113,30 @@
                 const horariosDisponibles = await response.json();
 
                 // Mostrar los horarios disponibles en la página
-                horariosDisponiblesElement.innerText = JSON.stringify(horariosDisponibles);
+                mostrarHorariosDisponibles(horariosDisponibles);
             } catch (error) {
                 console.error('Error al obtener horarios disponibles:', error);
                 // Manejar errores, por ejemplo, mostrar un mensaje de error
                 horariosDisponiblesElement.innerText = ('Error al obtener horarios disponibles:', error);
             }
+        }
+
+        function mostrarHorariosDisponibles(horarios) {
+            // Limpiar contenido existente
+            horariosDisponiblesDeInicioElement.innerHTML = '';
+
+            // Crear lista no ordenada
+            const listaHorarios = document.createElement("ul");
+
+            // Agregar cada horario como un elemento de lista
+            for (const horario of horarios) {
+                const li = document.createElement("li");
+                li.textContent = horario;
+                listaHorarios.appendChild(li);
+            }
+
+            // Agregar la lista a la página
+            horariosDisponiblesDeInicioElement.appendChild(listaHorarios);
         }
 
         function actualizarReserva(event) {

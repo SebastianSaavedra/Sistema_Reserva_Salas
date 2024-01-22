@@ -48,22 +48,28 @@
         // Permite creaar el calendario y horario mas modular
         flatpickr("#fechaInicio", {
             altInput: true,
-            altFormat: "F j, Y H:i",
-            enableTime: true,
-            time_24hr: true,
-            noCalendar: false,
-            dateFormat: "Y-m-d H:i",
-            minuteIncrement: 60
+                altFormat: "F j, Y H:i",
+                enableTime: true,
+                time_24hr: true,
+                noCalendar: false,
+                minDate: "today",
+                minTime: "08:00",
+                maxTime: "22:30",
+                dateFormat: "Y-m-d H:i",
+                minuteIncrement: 60
         });
 
         flatpickr("#fechaFin", {
             altInput: true,
-            altFormat: "F j, Y H:i",
-            enableTime: true,
-            time_24hr: true,
-            noCalendar: false,
-            dateFormat: "Y-m-d H:i",
-            minuteIncrement: 60
+                altFormat: "F j, Y H:i",
+                enableTime: true,
+                time_24hr: true,
+                noCalendar: false,
+                minDate: "today",
+                minTime: "08:00",
+                maxTime: "22:30",
+                dateFormat: "Y-m-d H:i",
+                minuteIncrement: 60
         });
 
         // Obtener el elemento donde se mostraran los horarios disponibles
@@ -86,15 +92,13 @@
             try {
                 // Realizar la solicitud al backend para obtener los horarios disponibles
                 const url = new URL(`/{{ oficina_id }}/horarios_disponibles`, window.location.origin);
-                url.searchParams.append('fechaInicio', fechaInicio);
-                url.searchParams.append('fechaFin', fechaFin);
                 url.searchParams.append('sala_id', '{{sala_id}}');
 
                 const response = await fetch(url);
                 const horariosDisponibles = await response.json();
 
                 // Mostrar los horarios disponibles en la página
-                horariosDisponiblesElement.innerText = JSON.stringify(horariosDisponibles);
+                horariosDisponiblesElement.innerText = JSON.stringify("Horarios disponibles: " + horariosDisponibles);
             } catch (error) {
                 console.error('Error al obtener horarios disponibles:', error);
                 // Manejar errores, por ejemplo, mostrar un mensaje de error
