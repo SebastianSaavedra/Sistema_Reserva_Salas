@@ -149,8 +149,8 @@
             const oficina_id = getCookieValue('oficina_id');
 
             // Verificar si introdujo fechas
-            if (!fechaInicio || !fechaFin) {
-                alert('Por favor, rellena los campos.');
+            if (!fechaInicio || !fechaFin || fechaFin <= fechaInicio) {
+                alert('Por favor, rellena los campos con fechas validas.');
                 return;
             }
 

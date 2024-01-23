@@ -50,50 +50,58 @@ def generar_enlaces_reserva(request: Request, reserva_id: str) -> List[Dict[str,
 
 async def verificar_disponibilidad(reserva: Reserva, request: Request):
     try:
-        print(f"ID de la sala: {reserva.sala_id}")
-        print(f"hora inicio: {reserva.fecha_inicio}")
-        print(f"hora fin: {reserva.fecha_fin}")
-        print(f"Path params: {request.path_params}")
+        # Obtain available time slots for the specified room and date
         horarios_disponibles = await obtener_horarios_disponibles(
-                    sala_id=reserva.sala_id,
-                    request=request
-                )
-        print(f"Horarios disponibles: {horarios_disponibles}")
+            fechaInicio=reserva.fecha_inicio,
+            fechaFin=reserva.fecha_fin,
+            sala_id=reserva.sala_id,
+            request=request
+        )
+        # Obtain all reservations for the room and date
+        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
+            "sala_id": reserva.sala_id,
+            "fecha_inicio": {"$gte": reserva.fecha_inicio.replace(hour=0, minute=0, second=0),
+                             "$lt": reserva.fecha_inicio.replace(hour=23, minute=59, second=59)}
+        }).to_list(None)
+        print(f"reservas: {reservas_dia}")
 
-        # Obtener todas las reservas para la sala y el día especificado
-        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"sala_id": reserva.sala_id}).to_list(None)
-        print(f"Cantidad de reservas del día: {len(reservas_dia)}")
-        print(f"Info de reservas del día: {reservas_dia}")
-        if len(reservas_dia) == 0: # Si no hay reservas para el día, la sala está disponible para cualquier horario
-            return True
-
-        print(f"La request es: {request.method}")
         if request.method == "PUT":
             if len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante: return True
             for r in reservas_dia:
                 if str(r['_id']) == request.path_params['reserva_id'] and r["fecha_inicio"] <= reserva.fecha_inicio and r["fecha_fin"] >= reserva.fecha_fin: return True
 
-
-        # Verificar si hay reservas existentes para el intervalo de tiempo especificado
-        reservas_intervalo = [r for r in reservas_dia
-                              if r["fecha_inicio"] < reserva.fecha_fin and r["fecha_fin"] > reserva.fecha_inicio]
-
-        print(f"reservas existentes en el intervalo: {len(reservas_intervalo)}")
-
-        # Si hay reservas existentes en el intervalo, la sala no está disponible
-        if len(reservas_intervalo) > 0:
+        # Check if the new time slot is within the available time slots
+        if (reserva.fecha_inicio.strftime("%H:%M") not in horarios_disponibles) or \
+           (reserva.fecha_fin.strftime("%H:%M") not in horarios_disponibles):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="La sala ya está reservada para ese intervalo de tiempo."
+                detail="La sala no está disponible para el intervalo de tiempo seleccionado."
             )
+        print(f"Paso el primer if de los horarios disponibles")
 
-        # La sala está disponible para modificar el horario
+        # Check for overlap with existing reservations
+        for r in reservas_dia:
+            if request.method == 'PUT' and str(r['_id']) == request.path_params['reserva_id']:  # Reserva_id solo es entregada en la solicitud PUT, en el caso de POST se entrega sala_id, por eso la condicional
+                # Skip the current reservation being modified
+                continue
+            print(f"La reserva seleccionada es: {r}")
+
+            # Check for overlap
+            if (r["fecha_inicio"] < reserva.fecha_fin) and (r["fecha_fin"] > reserva.fecha_inicio):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="La sala ya está reservada para ese intervalo de tiempo."
+                )
+
+            print(f"La reserva seleccionada es: {r}")
+        # If no overlap is found, the room is available
         return True
 
     except Exception as e:
-        # Manejar errores
-        # raise e
-        return False
+        # Handle errors
+        print(f"Error en la verificación de disponibilidad: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+
 
 async def ordenar_salas_ascendente(salas):
     return sorted(salas, key=lambda x: x.numero)
@@ -232,13 +240,12 @@ async def get_reservas_by_user(request: Request):
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
 @app.get("/{oficina_id}/horarios_disponibles")
-async def obtener_horarios_disponibles(sala_id: str, request: Request):
+async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime,sala_id: str, request: Request):
     try:
         intervalo = timedelta(minutes=60)
-        rango_am = datetime(hour=8, minute=0, second=0)
-        rango_pm = datetime(hour=23, minute=59, second=59)
+        rango_am = fechaInicio.replace(hour=8, minute=0, second=0)
+        rango_pm = fechaFin.replace(hour=23, minute=59, second=59)
 
-        # print(f"Fecha de inicio: {fechaInicio} y la fecha de fin es: {fechaFin}")
         reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
             "sala_id": sala_id
         }).to_list(None)
@@ -256,9 +263,6 @@ async def obtener_horarios_disponibles(sala_id: str, request: Request):
 
             rango_am += intervalo
 
-        # horarios_disponibles.append(fechaFin.strftime("%H:%M"))
-        # horarios_disponibles_ordenados = sorted(horarios_disponibles)
-        print(f"Horarios no reservados: {horarios_disponibles}")
         return horarios_disponibles
     except Exception as e:
         return {f"Error al obtener horarios disponibles: {e}"}  
