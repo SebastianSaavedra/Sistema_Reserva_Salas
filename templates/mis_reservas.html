@@ -28,8 +28,8 @@
                         <td>{{ reserva.fecha_inicio }}</td>
                         <td>{{ reserva.fecha_fin }}</td>
                         <td>
-                            {{ reserva.enlaces[0].rel }}
-                            {{ reserva.enlaces[1].rel }}
+                            <button onclick="window.location.href = '/{{ reserva.enlaces[0].url }}'">{{ reserva.enlaces[0].rel }}</button>
+                            <button onclick="confirmarEliminarReserva()">{{ reserva.enlaces[1].rel }}</button>
                         </td>
                     </tr>
                 {% endfor %}
@@ -40,5 +40,19 @@
     {% endif %}
 
     <button onclick="window.location.href = '/{{ request.cookies.get(oficina_id) }}/salas'">Volver a Salas</button>
+
+    <script>
+        function confirmarEliminarReserva() {
+            // Muestra una ventana emergente con la confirmación
+            const confirmacion = window.confirm("¿Seguro que deseas eliminar tu reserva?");
+            
+            // Si el usuario hizo clic en "Aceptar" en la ventana emergente
+            if (confirmacion) {
+                // Llama a la función para eliminar la reserva
+                eliminarReserva();
+            }
+        }
+
+    </script>
 </body>
 </html>

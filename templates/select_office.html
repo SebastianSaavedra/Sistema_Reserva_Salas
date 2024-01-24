@@ -18,8 +18,23 @@
         function redirectToSalas(button) {
             const oficinaId = button.getAttribute('oficina_id');
             document.cookie = `oficina_id=${oficinaId}`;
+            document.cookie = 'selecciono_oficina=1'; // 0 false 1 true
             window.location.href = `${oficinaId}/salas`;
         }
+
+        // Crear/limpiar cookies cuando cargue la pagina
+        // window.addEventListener('load', function(event) {
+        //     // Limpiar las cookies al retroceder en el historial
+        //     document.cookie = 'oficina_id=';            // document.cookie = 'oficina_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';    
+        //     document.cookie = 'selecciono_oficina=0';    // document.cookie = 'selecciono_oficina=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        // });
+        // Manejar el evento popstate
+        window.addEventListener('popstate', function(event) {
+            // Limpiar las cookies al retroceder en el historial
+            console.log("El usuario retrocedio y las cookies fueron borradas");
+            document.cookie = 'oficina_id=';            // document.cookie = 'oficina_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';    
+            document.cookie = 'selecciono_oficina=0';    // document.cookie = 'selecciono_oficina=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
     </script>
 </body>
 </html>

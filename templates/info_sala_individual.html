@@ -28,6 +28,8 @@
         
         <button type="submit">{{ sala_data.enlaces[2].rel }}</button>
     </form> 
+    
+    <button onclick="window.location.href = '{{ sala_data.enlaces[0].url }}' ">Volver a Salas</button>
 
     <!-- Agregar después del formulario -->
     <div id="horariosDisponibles"></div>
@@ -100,12 +102,30 @@
                 const horariosDisponibles = await response.json();
 
                 // Mostrar los horarios disponibles en la página
-                horariosDisponiblesElement.innerText = JSON.stringify("Horarios disponibles: " + horariosDisponibles);
+                mostrarHorariosDisponibles(horariosDisponibles);
             } catch (error) {
                 console.error('Error al obtener horarios disponibles:', error);
                 // Manejar errores, por ejemplo, mostrar un mensaje de error
                 horariosDisponiblesElement.innerText = ('Error al obtener horarios disponibles:', error);
             }
+        }
+
+        function mostrarHorariosDisponibles(horarios) {
+            // Limpiar contenido existente
+            horariosDisponiblesElement.innerHTML = '';
+
+            // Crear lista no ordenada
+            const listaHorarios = document.createElement("ul");
+
+            // Agregar cada horario como un elemento de lista
+            for (const horario of horarios) {
+                const li = document.createElement("li");
+                li.textContent = horario;
+                listaHorarios.appendChild(li);
+            }
+
+            // Agregar la lista a la página
+            horariosDisponiblesElement.appendChild(listaHorarios);
         }
 
 
@@ -162,3 +182,5 @@
     </script>
 </body>
 </html>
+
+

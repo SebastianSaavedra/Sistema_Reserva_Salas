@@ -85,8 +85,7 @@
         }
 
         // Obtener el elemento donde se mostraran los horarios disponibles
-        const horariosDisponiblesDeInicioElement = document.getElementById("horariosDisponiblesInicio");
-        const horariosDisponiblesDeFinElement = document.getElementById("horariosDisponiblesFin");
+        const horariosDisponiblesElement = document.getElementById("horariosDisponibles");
 
         // Manejar cambios en las fechas
         document.getElementById("fechaInicio").addEventListener("change", actualizarHorariosDisponibles);
@@ -123,7 +122,7 @@
 
         function mostrarHorariosDisponibles(horarios) {
             // Limpiar contenido existente
-            horariosDisponiblesDeInicioElement.innerHTML = '';
+            horariosDisponiblesElement.innerHTML = '';
 
             // Crear lista no ordenada
             const listaHorarios = document.createElement("ul");
@@ -136,7 +135,7 @@
             }
 
             // Agregar la lista a la página
-            horariosDisponiblesDeInicioElement.appendChild(listaHorarios);
+            horariosDisponiblesElement.appendChild(listaHorarios);
         }
 
         function actualizarReserva(event) {

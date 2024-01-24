@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Cookie, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.security import OAuth2AuthorizationCodeBearer
+# from fastapi.security import OAuth2AuthorizationCodeBearer
+# from jose import JWTError, jwt
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
 from bson import ObjectId
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import List, Dict, Union, Optional
+# from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import traceback
   
@@ -114,7 +116,7 @@ async def obtener_reservas(db):
 
 # Página inicial para seleccionar la oficina
 @app.get("/", response_class=HTMLResponse)
-async def select_oficina(request: Request):
+async def select_office(request: Request):
     oficinas_data = [
         {"nombre": "Florida Center", "oficina_id": "florida_center"},
         {"nombre": "Alto Las Condes", "oficina_id": "alto_las_condes"}
@@ -207,6 +209,7 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
 @app.get("/{oficina_id}/mis_reservas", response_class=HTMLResponse)
 async def get_reservas_by_user(request: Request):
     try:
+            ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
         reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": request.cookies.get("usuario")}).to_list(None)
         if reservas:
             salas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find().to_list(None)
@@ -343,4 +346,22 @@ async def delete_reserva(reserva_id: str, request: Request):
         print(f"Error al eliminar sala: {e}")
         raise HTTPException(status_code=404, detail="Sala no encontrada")
 
-app.add_middleware(SessionMiddleware, secret_key="secret_key")
+
+###### MIDDLEWARES ###### Orden de ejecucion de arriba hacia abajo
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="secret_key",
+    max_age=30,  # 30 minutos duracion de la sesion
+)
+
+@app.middleware("http")
+async def check_session_expiration(request: Request, call_next):
+    oficina_id_cookie = request.cookies.get("oficina_id")
+    selecciono_oficina_cookie = request.cookies.get("selecciono_oficina")
+
+    if not oficina_id_cookie and selecciono_oficina_cookie == "1":
+        # Session has expired or cookies are not present, redirect to appropriate page
+        return RedirectResponse(url="/Error", status_code=303)
+    
+    response = await call_next(request)
+    return response
