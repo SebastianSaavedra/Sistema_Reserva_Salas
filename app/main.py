@@ -15,7 +15,7 @@ import traceback
 app = FastAPI()
 mongo_db_url = "mongodb://localhost:27017"
 app.mongodb_client = AsyncIOMotorClient(mongo_db_url)
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 # Modelo Pydantic para la sala
 class Sala(BaseModel):
@@ -225,6 +225,7 @@ async def get_reservas_by_user(request: Request):
                 ]
                 # Crear un diccionario combinado que incluya la información de la reserva y los enlaces
                 reserva_combinada = {
+                    "reserva_id": reserva.get("_id"),
                     "numero_sala": sala_info.get("numero"),
                     "fecha_inicio": reserva.get("fecha_inicio"),
                     "fecha_fin": reserva.get("fecha_fin"),
@@ -233,7 +234,7 @@ async def get_reservas_by_user(request: Request):
                 }
                 reservas_combinadas.append(reserva_combinada)
 
-            return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas})
+            return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas, "oficina_id": request.cookies.get("oficina_id")})
         return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
     
     except Exception as e:
@@ -360,7 +361,6 @@ async def check_session_expiration(request: Request, call_next):
     selecciono_oficina_cookie = request.cookies.get("selecciono_oficina")
 
     if not oficina_id_cookie and selecciono_oficina_cookie == "1":
-        # Session has expired or cookies are not present, redirect to appropriate page
         return RedirectResponse(url="/Error", status_code=303)
     
     response = await call_next(request)

@@ -39,7 +39,7 @@
         <p>No se encontraron reservas para este usuario.</p>
     {% endif %}
 
-    <button onclick="window.location.href = '/{{ request.cookies.get(oficina_id) }}/salas'">Volver a Salas</button>
+    <button onclick="window.location.href = '/{{ oficina_id }}/salas'">Volver a Salas</button>
 
     <script>
         function confirmarEliminarReserva() {
@@ -53,6 +53,33 @@
             }
         }
 
+        function eliminarReserva() {
+        // Realiza la solicitud de eliminación al backend
+        fetch(`/{{ oficina_id }}/reservas/{{ reservas.reserva_id }}/eliminar`, {
+            method: 'DELETE',
+            redirect: 'follow',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (!response.ok) {
+                    throw new Error(`${response.statusText}`);
+                }
+                if (response.redirected) {
+                    alert('Eliminación de reserva exitosa!');
+                    window.location.href = response.url;  // or, location.replace(res.url); 
+                    return;
+                } 
+                else
+                    return response.json();
+        })
+        .catch(error => {
+            console.error('Error al eliminar la reserva: ', error);
+            // Manejar errores, por ejemplo, mostrar un mensaje de error al usuario
+            alert('Error al eliminar la reserva: ' + error.message);
+        });
+    }
     </script>
 </body>
 </html>
