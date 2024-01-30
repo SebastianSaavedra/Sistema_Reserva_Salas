@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Cookie, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+# from fastapi.templating import Jinja2Templates
 # from fastapi.security import OAuth2AuthorizationCodeBearer
 # from jose import JWTError, jwt
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
@@ -10,12 +10,13 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Union, Optional
 # from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 import traceback
   
 app = FastAPI()
 mongo_db_url = "mongodb://localhost:27017"
 app.mongodb_client = AsyncIOMotorClient(mongo_db_url)
-templates = Jinja2Templates(directory="app/templates")
+# templates = Jinja2Templates(directory="app/templates")
 
 # Modelo Pydantic para la sala
 class Sala(BaseModel):
@@ -114,83 +115,99 @@ async def obtener_salas(db):
 async def obtener_reservas(db):
     return await db["reservas"].find().to_list(None)
 
+@app.get("/establecer-cookie-oficina/{clave}-{valor}")
+async def establecer_cookie_oficina(clave: str, valor: str):
+    response = JSONResponse(content={"mensaje": "Cookie establecida"})
+    response.set_cookie(key=clave, value=valor)
+    return response
+
 # Página inicial para seleccionar la oficina
-@app.get("/", response_class=HTMLResponse)
-async def select_office(request: Request):
+@app.get("/oficinas", response_class=JSONResponse)
+async def get_office_data(request: Request):
     oficinas_data = [
         {"nombre": "Florida Center", "oficina_id": "florida_center"},
         {"nombre": "Alto Las Condes", "oficina_id": "alto_las_condes"}
     ]
-    return templates.TemplateResponse("select_office.html", {"request": request, "oficinas_data": oficinas_data})
+    # response_data = {
+    #     "request_info": {
+    #         "method": request.method,
+    #         "path_params": request.path_params,
+    #         "query_params": request.query_params,
+    #         "cookies": request.cookies,
+    #         "headers": request.headers
+    #     },
+    #     "oficinas_data": oficinas_data
+    # }
+    return oficinas_data
 
 # Lista de Salas de una Oficina
-@app.get("/{oficina_id}/salas", response_model=List[Sala], response_class=HTMLResponse)
-async def mostrar_lista_salas(request: Request):
-    try:
-        salas_from_db = await obtener_salas(request.app.mongodb_client[request.cookies.get("oficina_id")])
-        salas_ordenadas = sorted(salas_from_db, key=lambda x: x.get("numero", 0))
+# @app.get("/{oficina_id}/salas", response_model=List[Sala], response_class=JSONResponse)
+# async def mostrar_lista_salas(request: Request):
+#     try:
+#         salas_from_db = await obtener_salas(request.app.mongodb_client[request.cookies.get("oficina_id")])
+#         salas_ordenadas = sorted(salas_from_db, key=lambda x: x.get("numero", 0))
 
-        salas_con_enlaces = []
+#         salas_con_enlaces = []
 
-        for sala in salas_ordenadas:
-            enlaces_sala = generar_enlaces_sala(request,str(sala["_id"]))
-            sala_con_enlaces = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
-            salas_con_enlaces.append(sala_con_enlaces)
+#         for sala in salas_ordenadas:
+#             enlaces_sala = generar_enlaces_sala(request,str(sala["_id"]))
+#             sala_con_enlaces = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
+#             salas_con_enlaces.append(sala_con_enlaces)
 
-        return templates.TemplateResponse("lista_salas.html", {"request": request, "salas": salas_con_enlaces})
-    except Exception as e:
-        print(f"Error al obtener lista de salas: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+#         return templates.TemplateResponse("lista_salas.html", {"request": request, "salas": salas_con_enlaces})
+#     except Exception as e:
+#         print(f"Error al obtener lista de salas: {e}")
+#         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para obtener todas las reservas
-@app.get("/{oficina_id}/reservas", response_model=List[Reserva], response_class=HTMLResponse)
-async def get_reservas(request: Request):
-    try:
-        reservas_from_db = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find().to_list(None)
-        reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
-        return templates.TemplateResponse("lista_reservas.html", {"request": request, "reservas": reservas})
-    except Exception as e:
-        print(f"Error al obtener reservas: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+# @app.get("/{oficina_id}/reservas", response_model=List[Reserva], response_class=JSONResponse)
+# async def get_reservas(request: Request):
+#     try:
+#         reservas_from_db = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find().to_list(None)
+#         reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
+#         return templates.TemplateResponse("lista_reservas.html", {"request": request, "reservas": reservas})
+#     except Exception as e:
+#         print(f"Error al obtener reservas: {e}")
+#         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para obtener una sala por su ID
-@app.get("/{oficina_id}/salas/{sala_id}", response_model=Sala, response_class=HTMLResponse)
-async def get_sala(sala_id: str, request: Request):
-    try:
-        sala = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(sala_id)})
-        if sala:
-            enlaces_reserva = generar_enlaces_reserva(request, sala_id)
-            sala_data = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_reserva)
+# @app.get("/{oficina_id}/salas/{sala_id}", response_model=Sala, response_class=JSONResponse)
+# async def get_sala(sala_id: str, request: Request):
+#     try:
+#         sala = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(sala_id)})
+#         if sala:
+#             enlaces_reserva = generar_enlaces_reserva(request, sala_id)
+#             sala_data = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_reserva)
 
-            return templates.TemplateResponse(
-                "info_sala_individual.html",
-                {"request": request, "sala_data": sala_data, "oficina_id": request.cookies.get("oficina_id"), "sala_id": sala_id}
-            )
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
-    except Exception as e:
-        print(f"Error al obtener sala: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+#             return templates.TemplateResponse(
+#                 "info_sala_individual.html",
+#                 {"request": request, "sala_data": sala_data, "oficina_id": request.cookies.get("oficina_id"), "sala_id": sala_id}
+#             )
+#         raise HTTPException(status_code=404, detail="Sala no encontrada")
+#     except Exception as e:
+#         print(f"Error al obtener sala: {e}")
+#         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para obtener una reserva por su ID
-@app.get("/{oficina_id}/reservas/{reserva_id}", response_model=Reserva)
-async def get_reserva(reserva_id: str, request: Request):
-    try:
-        reserva = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one({"_id": ObjectId(reserva_id)})
-        if reserva:
-            enlaces_reserva = generar_enlaces_reserva(request, reserva_id)
-            reserva_data = Reserva(**reserva, enlaces=enlaces_reserva)
-            sala_data = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(reserva_data.sala_id)})
-            return templates.TemplateResponse(
-                "datos_reserva.html",
-                {"request": request, "reserva_data": reserva_data, "oficina_id": request.cookies.get("oficina_id"), "sala_data": sala_data, "reserva_id": reserva_id}
-            )
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
-    except Exception as e:
-        print(f"Error al obtener reserva: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+# @app.get("/{oficina_id}/reservas/{reserva_id}", response_class=JSONResponse)
+# async def get_reserva(reserva_id: str, request: Request):
+#     try:
+#         reserva = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one({"_id": ObjectId(reserva_id)})
+#         if reserva:
+#             enlaces_reserva = generar_enlaces_reserva(request, reserva_id)
+#             reserva_data = Reserva(**reserva, enlaces=enlaces_reserva)
+#             sala_data = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find_one({"_id": ObjectId(reserva_data.sala_id)})
+#             return templates.TemplateResponse(
+#                 "datos_reserva.html",
+#                 {"request": request, "reserva_data": reserva_data, "oficina_id": request.cookies.get("oficina_id"), "sala_data": sala_data, "reserva_id": reserva_id}
+#             )
+#         raise HTTPException(status_code=404, detail="Reserva no encontrada")
+#     except Exception as e:
+#         print(f"Error al obtener reserva: {e}")
+#         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operación para obtener todas las reservas de una sala por el ID de la sala
 @app.get("/{oficina_id}/reservas/{sala_id}/todas", response_model=List[Reserva])
@@ -206,41 +223,41 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operación para obtener todas las reservas de un usuario por su nombre
-@app.get("/{oficina_id}/mis_reservas", response_class=HTMLResponse)
-async def get_reservas_by_user(request: Request):
-    try:
-            ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
-        reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": request.cookies.get("usuario")}).to_list(None)
-        if reservas:
-            salas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find().to_list(None)
-            reservas_combinadas = []
+# @app.get("/{oficina_id}/mis_reservas", response_class=JSONResponse)
+# async def get_reservas_by_user(request: Request):
+#     try:
+#             ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+#         reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"nombre_reservante": request.cookies.get("usuario")}).to_list(None)
+#         if reservas:
+#             salas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["salas"].find().to_list(None)
+#             reservas_combinadas = []
 
-            for reserva in reservas:
-                sala_info = next((s for s in salas if str(s["_id"]) == reserva["sala_id"]), None)
+#             for reserva in reservas:
+#                 sala_info = next((s for s in salas if str(s["_id"]) == reserva["sala_id"]), None)
 
-                # Generar enlaces específicos para cada reserva
-                enlaces_reserva = [
-                    enlace for enlace in generar_enlaces_reserva(request, str(reserva["_id"]))
-                    if enlace.get("rel") in ["Actualizar horario de reserva", "Eliminar reserva"]
-                ]
-                # Crear un diccionario combinado que incluya la información de la reserva y los enlaces
-                reserva_combinada = {
-                    "reserva_id": reserva.get("_id"),
-                    "numero_sala": sala_info.get("numero"),
-                    "fecha_inicio": reserva.get("fecha_inicio"),
-                    "fecha_fin": reserva.get("fecha_fin"),
-                    "enlaces": enlaces_reserva,
-                    # Agregar más campos según sea necesario
-                }
-                reservas_combinadas.append(reserva_combinada)
+#                 # Generar enlaces específicos para cada reserva
+#                 enlaces_reserva = [
+#                     enlace for enlace in generar_enlaces_reserva(request, str(reserva["_id"]))
+#                     if enlace.get("rel") in ["Actualizar horario de reserva", "Eliminar reserva"]
+#                 ]
+#                 # Crear un diccionario combinado que incluya la información de la reserva y los enlaces
+#                 reserva_combinada = {
+#                     "reserva_id": reserva.get("_id"),
+#                     "numero_sala": sala_info.get("numero"),
+#                     "fecha_inicio": reserva.get("fecha_inicio"),
+#                     "fecha_fin": reserva.get("fecha_fin"),
+#                     "enlaces": enlaces_reserva,
+#                     # Agregar más campos según sea necesario
+#                 }
+#                 reservas_combinadas.append(reserva_combinada)
 
-            return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas, "oficina_id": request.cookies.get("oficina_id")})
-        return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
+#             return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas_combinadas, "oficina_id": request.cookies.get("oficina_id")})
+#         return templates.TemplateResponse("mis_reservas.html", {"request": request, "reservas": reservas})
     
-    except Exception as e:
-        # Imprimir la información completa de la excepción, incluida la traza
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+#     except Exception as e:
+#         # Imprimir la información completa de la excepción, incluida la traza
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
 @app.get("/{oficina_id}/horarios_disponibles")
@@ -352,7 +369,7 @@ async def delete_reserva(reserva_id: str, request: Request):
 app.add_middleware(
     SessionMiddleware,
     secret_key="secret_key",
-    max_age=30,  # 30 minutos duracion de la sesion
+    max_age=1800,  # 30 minutos duracion de la sesion
 )
 
 @app.middleware("http")
@@ -365,3 +382,11 @@ async def check_session_expiration(request: Request, call_next):
     
     response = await call_next(request)
     return response
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permitir todas las solicitudes, puedes ajustar esto según tus necesidades.
+    allow_credentials=True,
+    allow_methods=["*"],  # Permitir todos los métodos HTTP
+    allow_headers=["*"],  # Permitir todos los encabezados
+)
