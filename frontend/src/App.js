@@ -1,32 +1,25 @@
 import React from 'react';
+// import { useSelector } from 'react-redux';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import NavigationBar from './components/NavBar';
-import ElegirOficina from './components/ElegirOficina';
-import { OficinaProvider, useOficinaContext } from './components/Oficina';
+// import ElegirOficina from './components/ElegirOficina';
+import Calendario from './components/Calendario';
+// import MisReservas from './components/MisReservas';
 
 function App() {
-  const { setOficinaSeleccionada, oficinaSeleccionada } = useOficinaContext();
-
-  const handleOficinaSelect = oficina => {
-    setOficinaSeleccionada(oficina);
-  };
-
   return (
-    <div className='App'>
+    <div>
       <NavigationBar />
-      {oficinaSeleccionada ? (
-        // Renderizar el componente asociado a la oficina seleccionada (por ejemplo, Calendario)
-        <h1>Calendario para la oficina {oficinaSeleccionada}</h1>
-      ) : (
-        // Renderizar el componente para elegir una oficina
-        <ElegirOficina onOficinaSelect={handleOficinaSelect} />
-      )}
+      <Router>
+        <Routes>
+          {/* <Route path="/home" element={<ElegirOficina />} /> */}
+          <Route path="/*" element={<Calendario />} />
+          {/* <Route path="/misreservas" element={<MisReservas />} /> */}
+          {/* Puedes agregar más rutas según sea necesario */}
+        </Routes>
+      </Router>
     </div>
   );
 }
-
-export default () => (
-  <OficinaProvider>
-    <App />
-  </OficinaProvider>
-);
+export default App;

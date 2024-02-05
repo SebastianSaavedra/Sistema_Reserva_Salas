@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 # from fastapi.security import OAuth2AuthorizationCodeBearer
 # from jose import JWTError, jwt
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
-from bson import ObjectId
+from bson import ObjectId, json_util
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import List, Dict, Union, Optional
@@ -161,15 +161,18 @@ async def get_office_data(request: Request):
 
 
 # Operación para obtener todas las reservas
-# @app.get("/{oficina_id}/reservas", response_model=List[Reserva], response_class=JSONResponse)
-# async def get_reservas(request: Request):
-#     try:
-#         reservas_from_db = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find().to_list(None)
-#         reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
-#         return templates.TemplateResponse("lista_reservas.html", {"request": request, "reservas": reservas})
-#     except Exception as e:
-#         print(f"Error al obtener reservas: {e}")
-#         raise HTTPException(status_code=500, detail="Error interno del servidor")
+@app.get("/todas_las_reservas", response_class=JSONResponse)
+async def get_reservas(request: Request):
+    try:
+        print(f"0. Mi cookie: " + request.cookies.get("oficina_id"))
+        reservas_from_db = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find().to_list(None)
+        print(f"1. mis reservas son: " + reservas_from_db)
+        reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
+        print(f"2. mis reservas son: " + reservas)
+        return JSONResponse(content=reservas)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para obtener una sala por su ID
