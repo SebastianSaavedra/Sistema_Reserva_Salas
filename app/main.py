@@ -27,29 +27,30 @@ class Sala(BaseModel):
 
 # Modelo Pydantic para la reserva
 class Reserva(BaseModel):
-    sala_id: str
+    # sala_id: str
+    sala_numero: str
     fecha_inicio: datetime
     fecha_fin: datetime
     nombre_reservante: str
-    enlaces: List[Dict[str, Union[str, Dict[str, str]]]] = []
+    # enlaces: List[Dict[str, Union[str, Dict[str, str]]]] = []
 
 
-def generar_enlaces_sala(request: Request,sala_id: str) -> List[Dict[str, str]]:
-    return [
-        {"rel": "Ver Sala", "url": f"/{request.cookies.get("oficina_id")}/salas/{sala_id}"}
-        # Agregar más enlaces según sea necesario
-    ]
+# def generar_enlaces_sala(request: Request,sala_id: str) -> List[Dict[str, str]]:
+#     return [
+#         {"rel": "Ver Sala", "url": f"/{request.cookies.get("oficina_id")}/salas/{sala_id}"}
+#         # Agregar más enlaces según sea necesario
+#     ]
 
 
-def generar_enlaces_reserva(request: Request, reserva_id: str) -> List[Dict[str, Union[str, Dict[str, str]]]]:
-    return [
-        {"rel": "Volver a Salas", "url": f"/{request.cookies.get("oficina_id")}/salas", "metodo": "GET"},
-        {"rel": "Ver Reservas de la sala", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/todas", "metodo": "GET"},
-        {"rel": "Reservar", "url": f"/{request.cookies.get("oficina_id")}/reservar/{reserva_id}", "metodo": "POST"},
-        {"rel": "Actualizar horario de reserva", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/actualizar", "metodo": "PUT"},
-        {"rel": "Eliminar reserva", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/eliminar", "metodo": "DELETE"}
-        # Agregar mas enlaces segun necesidades
-    ]
+# def generar_enlaces_reserva(request: Request, reserva_id: str) -> List[Dict[str, Union[str, Dict[str, str]]]]:
+#     return [
+#         {"rel": "Volver a Salas", "url": f"/{request.cookies.get("oficina_id")}/salas", "metodo": "GET"},
+#         {"rel": "Ver Reservas de la sala", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/todas", "metodo": "GET"},
+#         {"rel": "Reservar", "url": f"/{request.cookies.get("oficina_id")}/reservar/{reserva_id}", "metodo": "POST"},
+#         {"rel": "Actualizar horario de reserva", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/actualizar", "metodo": "PUT"},
+#         {"rel": "Eliminar reserva", "url": f"/{request.cookies.get("oficina_id")}/reservas/{reserva_id}/eliminar", "metodo": "DELETE"}
+#         # Agregar mas enlaces segun necesidades
+#     ]
 
 async def verificar_disponibilidad(reserva: Reserva, request: Request):
     try:
@@ -141,38 +142,39 @@ async def get_office_data(request: Request):
     return oficinas_data
 
 # Lista de Salas de una Oficina
-# @app.get("/{oficina_id}/salas", response_model=List[Sala], response_class=JSONResponse)
-# async def mostrar_lista_salas(request: Request):
-#     try:
-#         salas_from_db = await obtener_salas(request.app.mongodb_client[request.cookies.get("oficina_id")])
-#         salas_ordenadas = sorted(salas_from_db, key=lambda x: x.get("numero", 0))
+@app.get("/salas/{oficina_id}", response_class=JSONResponse)
+async def mostrar_lista_salas(request: Request, oficina_id: str):
+    try:
+        salas_from_db = await obtener_salas(request.app.mongodb_client[oficina_id])
+        salas_ordenadas = sorted(salas_from_db, key=lambda x: x.get("numero", 0))
 
-#         salas_con_enlaces = []
+        for sala in salas_ordenadas:
+            sala["_id"] = str(sala["_id"])
 
-#         for sala in salas_ordenadas:
-#             enlaces_sala = generar_enlaces_sala(request,str(sala["_id"]))
-#             sala_con_enlaces = Sala(**sala, oid=str(sala["_id"]), enlaces=enlaces_sala)
-#             salas_con_enlaces.append(sala_con_enlaces)
-
-#         return templates.TemplateResponse("lista_salas.html", {"request": request, "salas": salas_con_enlaces})
-#     except Exception as e:
-#         print(f"Error al obtener lista de salas: {e}")
-#         raise HTTPException(status_code=500, detail="Error interno del servidor")
+        return salas_ordenadas
+    except Exception as e:
+        print(f"Error al obtener lista de salas: {e}")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para obtener todas las reservas
-@app.get("/todas_las_reservas", response_class=JSONResponse)
-async def get_reservas(request: Request):
+@app.get("/todas_las_reservas/{oficina_id}", response_class=JSONResponse)
+async def get_reservas(request: Request, oficina_id: str):
     try:
-        print(f"0. Mi cookie: " + request.cookies.get("oficina_id"))
-        reservas_from_db = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find().to_list(None)
-        print(f"1. mis reservas son: " + reservas_from_db)
-        reservas = [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas_from_db]
-        print(f"2. mis reservas son: " + reservas)
-        return JSONResponse(content=reservas)
+        reservas_from_db = await request.app.mongodb_client[oficina_id]["reservas"].find().to_list(None)
+        
+        # Convertir ObjectId a str para que sea serializable a JSON
+        for reserva in reservas_from_db:
+            reserva["_id"] = str(reserva["_id"])
+            # Convertir datetime a string en formato ISO 8601
+            reserva["fecha_inicio"] = reserva["fecha_inicio"].isoformat()
+            reserva["fecha_fin"] = reserva["fecha_fin"].isoformat()
+
+        return JSONResponse(content=reservas_from_db)
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
+
 
 
 # Operación para obtener una sala por su ID
@@ -263,17 +265,21 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
 #         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
-@app.get("/{oficina_id}/horarios_disponibles")
-async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime,sala_id: str, request: Request):
+@app.get("/horarios_disponibles/{oficina_id}")
+async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str, request: Request):
     try:
-        intervalo = timedelta(minutes=60)
-        rango_am = fechaInicio.replace(hour=8, minute=0, second=0)
-        rango_pm = fechaFin.replace(hour=23, minute=59, second=59)
+        # Convertir la cadena de fecha a objetos datetime
+        fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
 
-        reservas_dia = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({
+        # Establecer el rango de tiempo para el día seleccionado
+        rango_am = fecha_dt.replace(hour=8, minute=0, second=0)
+        rango_pm = fecha_dt.replace(hour=23, minute=59, second=59)
+
+        intervalo = timedelta(minutes=60)
+
+        reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
             "sala_id": sala_id
         }).to_list(None)
-        print(f"reservas dia: {reservas_dia}")
 
         horarios_disponibles = []
         while rango_am <= rango_pm:
@@ -284,12 +290,11 @@ async def obtener_horarios_disponibles(fechaInicio: datetime, fechaFin: datetime
             )
             if not ocupado:
                 horarios_disponibles.append(rango_am.strftime("%H:%M"))
-
             rango_am += intervalo
 
         return horarios_disponibles
     except Exception as e:
-        return {f"Error al obtener horarios disponibles: {e}"}  
+        return {f"Error al obtener horarios disponibles: {e}"} 
 
 # Operación para hacer una reserva en la base de datos
 @app.post("/{oficina_id}/reservar/{sala_id}")
@@ -374,17 +379,6 @@ app.add_middleware(
     secret_key="secret_key",
     max_age=1800,  # 30 minutos duracion de la sesion
 )
-
-@app.middleware("http")
-async def check_session_expiration(request: Request, call_next):
-    oficina_id_cookie = request.cookies.get("oficina_id")
-    selecciono_oficina_cookie = request.cookies.get("selecciono_oficina")
-
-    if not oficina_id_cookie and selecciono_oficina_cookie == "1":
-        return RedirectResponse(url="/Error", status_code=303)
-    
-    response = await call_next(request)
-    return response
 
 app.add_middleware(
     CORSMiddleware,
