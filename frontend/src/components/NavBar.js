@@ -43,14 +43,7 @@ function NavigationBar() {
     const currentOffice = oficinas.find(office => office.nombre === oficinaToggle);
     if (currentOffice) {
       dispatch(selectOfficeId(currentOffice.oficina_id));
-      api.setCookie("oficina_id", currentOffice.oficina_id, {
-        domain: "localhost",
-        path: "/",
-        expires: new Date(Date.now() + 86400000), // Ejemplo: expira en 1 día
-        secure: true,
-        sameSite: "None",
-        httpOnly: true
-      });
+      api.setCookie("oficina_id", currentOffice.oficina_id);
     }
   };
 

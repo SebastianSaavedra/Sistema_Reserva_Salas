@@ -2,6 +2,16 @@ import axios from 'axios';
 
 const url_web="http://localhost:8000"
 
+const getOficina_CookieValue = () => {
+  const cookieString = document.cookie;
+  let oficina_id_cookie = '';
+  if (cookieString.startsWith("oficina_id="))
+  {
+    oficina_id_cookie = cookieString.split('=')[1];
+  }
+  return oficina_id_cookie;
+}
+
 const api = {
   getOficinas: () => {
     return axios.get(`${url_web}/oficinas`);
@@ -30,8 +40,17 @@ const api = {
   },
 
   getReservas: () => {
-    return axios.get(`${url_web}/todas_las_reservas`);
+    return axios.get(`${url_web}/todas_las_reservas/${getOficina_CookieValue()}`);
   },
+
+  getSalas: () => {
+    return axios.get(`${url_web}/salas/${getOficina_CookieValue()}`);
+  },
+
+  getHorariosDisponibles: (fecha, sala_id) => {
+    return axios.get(`${url_web}/horarios_disponibles/${getOficina_CookieValue()}?fecha=${fecha}&sala_id=${sala_id}`);
+  },
+  
 
 //   postSeleccionOficina: (oficinaId) => {
 //     return axios.post(`${url_web}/seleccionar-oficina`, { oficinaId });
