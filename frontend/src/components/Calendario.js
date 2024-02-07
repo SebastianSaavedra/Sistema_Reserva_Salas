@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import moment from 'moment';
@@ -16,6 +16,8 @@ const Calendario = () => {
   const [showModal, setShowModal] = useState(false);
   const [horarioInicio, setHorarioInicio] = useState(null);
   const [horarioFin, setHorarioFin] = useState(null);
+  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+  const calendarRef = useRef(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,7 +28,7 @@ const Calendario = () => {
         ]);
         const numerosSalas = salasResponse.data.map(sala => ({ numero: sala.numero, id: sala._id }));
         setSalas(numerosSalas);
-        setReservas(reservasResponse.data)
+        setReservas(reservasResponse.data);
       } catch (error) {
         console.error('Error al solicitar los datos al backend:', error);
       }
@@ -34,57 +36,138 @@ const Calendario = () => {
     fetchData();
   }, []);
 
-  const handleSelectDate = date => {
-    setSelectedDate(date);
-    setShowModal(true);
-    console.log(selectedDate);
+  useEffect(() => {
+    const ref = calendarRef.current;
+    const listenSlotClick = (event) => {
+      // get nearest elements from click
+      const elements = document.elementsFromPoint(event.clientX, event.clientY);
+      // get day wrapper
+      const dayElement = elements.find((element) =>
+        element.matches(".rbc-day-bg")
+      );
+      if (dayElement) {
+        const date = new Date(dayElement.getAttribute("data-date"));
+        handler.SelectDate(date);
+      }
+    };
+    if (calendarRef && ref) {
+      ref.addEventListener("click", listenSlotClick);
+      return () => {
+        ref.removeEventListener("click", listenSlotClick);
+      };
+    }
+  }, []);
+
+  const onSelectEvent = (event) => {
+    // console.log("Horario clickleado: " + selectedDate);
+    // reservas.forEach(reserva => {
+    //   console.log(reserva.fecha_inicio);
+    // });
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setSelectedSala(null);
-    setHorarioInicio(null);
-    setHorarioFin(null);
+  const handler = {
+    SelectDate: (date) => {
+      setSelectedDate(date);
+      setShowModal(true);
+    },
+
+    CloseModal: () => {
+      setShowModal(false);
+      setSelectedSala(null);
+      setHorarioInicio(null);
+      setHorarioFin(null);
+      setSelectedDate(null);
+    },
+
+    SalaSelect: async (sala) => {
+      try
+      {
+        setSelectedSala(sala);
+      } catch (error) {
+        console.error('Error al obtener los horarios disponibles:', error);
+      }
+    },
+
+    HorarioInicioSelect: (horario) => {
+      setHorarioInicio(horario);
+    },
+
+    HorarioFinSelect: (horario) => {
+      setHorarioFin(horario);
+    },
+
+    Submit: () => {
+      console.log('Sala seleccionada:', selectedSala);
+      console.log('Horario de inicio:', horarioInicio);
+      console.log('Horario de fin:', horarioFin);
+      handler.CloseModal();
+    },
+  }
+
+  useEffect(() => {
+    if (selectedDate) {
+      console.log(selectedDate);
+      const fetchHorariosDisponibles = async () => {
+        const year = selectedDate.getFullYear();
+        const month = ("0" + (selectedDate.getMonth() + 1)).slice(-2);
+        const day = ("0" + selectedDate.getDate()).slice(-2);
+        const apiDateString = `${year}-${month}-${day}`;
+        try {
+          const res = await api.getHorariosDisponibles(apiDateString, selectedSala.id);
+          setHorariosDisponibles(res.data);
+          console.log(horariosDisponibles);
+        } catch (error) {
+          console.error('Error al obtener los horarios disponibles:', error);
+        }
+      };
+      fetchHorariosDisponibles();
+    }
+  }, [selectedSala]);
+  
+  // Función para limitar las opciones del horario de fin
+  const limitarHorariosFin = () => {
+    if (!horarioInicio || !horariosDisponibles.length) return [];
+    const horaInicioComparable = parseInt(horarioInicio.split(":")[0]);
+    const horariosPosteriores = horariosDisponibles.filter(horario => {
+      const hora = parseInt(horario.split(":")[0]);
+      return hora >= horaInicioComparable;
+    });
+    if (horariosPosteriores.length === 0) return [];
+    const ultimoHorarioDisponible = horariosPosteriores[horariosPosteriores.length - 1];
+    const ultimoIndice = horariosDisponibles.indexOf(ultimoHorarioDisponible);
+    return horariosDisponibles.slice(0, ultimoIndice + 1);
   };
 
-  const handleSalaSelect = sala => {
-    setSelectedSala(sala);
-  };
-
-  const handleHorarioInicioSelect = horario => {
-    setHorarioInicio(horario);
-    api.getHorariosDisponibles(selectedDate,selectedSala._id).then((res) => console.log(res));
-  };
-
-  const handleHorarioFinSelect = horario => {
-    setHorarioFin(horario);
-  };
-
-  const handleSubmit = () => {
-    console.log('Sala seleccionada:', selectedSala);
-    console.log('Horario de inicio:', horarioInicio);
-    console.log('Horario de fin:', horarioFin);
-    // Puedes agregar la lógica adicional aquí, como enviar los datos al backend
-    handleCloseModal();
-  };
+  const horariosFinLimitados = limitarHorariosFin();
 
   const horarios = [
-    { start: '08:00', end: '09:00', label: '8:00 am - 9:00 am' },
-    { start: '09:00', end: '10:00', label: '9:00 am - 10:00 am' },
+    { time: '08:00', label: '8:00 am' },
+    { time: '09:00', label: '9:00 am' },
     // Agrega más opciones según sea necesario
   ];
 
+  const eventos = reservas.map(reserva => ({
+    title: reserva.nombre_reservante,
+    start: new Date(reserva.fecha_inicio),
+    end: new Date(reserva.fecha_fin),
+    // Numero de la sala
+  }));
+
   return (
-    <div>
+    <div ref={calendarRef}>
       <Calendar
+        components={{
+          dateCellWrapper: ({ children, value }) =>
+            React.cloneElement(children, { "data-date": value }),
+        }}
         localizer={localizer}
         selectable={true}
-        onSelectSlot={handleSelectDate}
+        onSelectSlot={onSelectEvent}
         style={{ height: 500 }}
-        events={[]}
+        events={eventos}
       />
 
-      <Modal show={showModal} onHide={handleCloseModal}>
+      <Modal show={showModal} onHide={handler.CloseModal}>
         <Modal.Header closeButton>
           <Modal.Title>Reservar</Modal.Title>
         </Modal.Header>
@@ -98,7 +181,7 @@ const Calendario = () => {
               {salas.map(sala => (
                 <Dropdown.Item
                   key={sala.id}
-                  onClick={() => handleSalaSelect(sala)}
+                  onClick={() => handler.SalaSelect(sala)}
                 >
                   {sala.numero}
                 </Dropdown.Item>
@@ -108,15 +191,15 @@ const Calendario = () => {
           <p>Selecciona un horario de inicio:</p>
           <Dropdown>
             <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio">
-              {horarioInicio ? horarioInicio.label : 'Seleccionar horario de inicio'}
+              {horarioInicio ? horarioInicio : 'Seleccionar horario de inicio'}
             </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {horarios.map(horario => (
+              <Dropdown.Menu>
+                {Array.isArray(horariosDisponibles) && horariosDisponibles.map(horario => (
                 <Dropdown.Item
-                  key={horario.start}
-                  onClick={() => handleHorarioInicioSelect(horario)}
+                  key={horario.id}
+                  onClick={() => handler.HorarioInicioSelect(horario)}
                 >
-                  {horario.label}
+                  {horario}
                 </Dropdown.Item>
               ))}
             </Dropdown.Menu>
@@ -124,25 +207,25 @@ const Calendario = () => {
           <p>Selecciona un horario de fin:</p>
           <Dropdown>
             <Dropdown.Toggle variant="primary" id="dropdown-horario-fin">
-              {horarioFin ? horarioFin.label : 'Seleccionar horario de fin'}
+              {horarioFin ? horarioFin : 'Seleccionar horario de fin'}
             </Dropdown.Toggle>
             <Dropdown.Menu>
-              {horarios.map(horario => (
+            {Array.isArray(horariosDisponibles) && horariosFinLimitados.map(horario => (
                 <Dropdown.Item
-                  key={horario.start}
-                  onClick={() => handleHorarioFinSelect(horario)}
+                  key={horario.id}
+                  onClick={() => handler.HorarioFinSelect(horario)}
                 >
-                  {horario.label}
+                  {horario}
                 </Dropdown.Item>
               ))}
             </Dropdown.Menu>
           </Dropdown>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
+          <Button variant="secondary" onClick={handler.CloseModal}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={handleSubmit}>
+          <Button variant="primary" onClick={handler.Submit}>
             Guardar reserva
           </Button>
         </Modal.Footer>
