@@ -77,6 +77,7 @@ const Calendario = () => {
       setHorarioInicio(null);
       setHorarioFin(null);
       setSelectedDate(null);
+      setHorariosDisponibles(null);
     },
 
     SalaSelect: async (sala) => {
@@ -127,30 +128,30 @@ const Calendario = () => {
   // Función para limitar las opciones del horario de fin
   const limitarHorariosFin = () => {
     if (!horarioInicio || !horariosDisponibles.length) return [];
-    const horaInicioComparable = parseInt(horarioInicio.split(":")[0]);
-    const horariosPosteriores = horariosDisponibles.filter(horario => {
-      const hora = parseInt(horario.split(":")[0]);
-      return hora >= horaInicioComparable;
-    });
-    if (horariosPosteriores.length === 0) return [];
-    const ultimoHorarioDisponible = horariosPosteriores[horariosPosteriores.length - 1];
-    const ultimoIndice = horariosDisponibles.indexOf(ultimoHorarioDisponible);
-    return horariosDisponibles.slice(0, ultimoIndice + 1);
-  };
 
+    const horaInicioComparable = parseInt(horarioInicio.split(":")[0]);
+    const horariosDisponiblesPosteriores = [];
+
+    // Comenzamos a contar desde la hora de inicio + 1 hacia adelante, en intervalos de una hora
+    for (let hora = horaInicioComparable + 1; hora < 24; hora++) {
+        const horarioActual = `${hora.toString().padStart(2, "0")}:00`; // Formateamos el horario actual
+        if (horariosDisponibles.includes(horarioActual)) {
+            // Si el horario actual está en la lista de horarios disponibles, lo agregamos a la lista de horarios disponibles posteriores
+            horariosDisponiblesPosteriores.push(horarioActual);
+        } else {
+            // Si el horario actual no está en la lista de horarios disponibles, terminamos el bucle
+            break;
+        }
+    }
+    return horariosDisponiblesPosteriores;
+  };
   const horariosFinLimitados = limitarHorariosFin();
 
-  const horarios = [
-    { time: '08:00', label: '8:00 am' },
-    { time: '09:00', label: '9:00 am' },
-    // Agrega más opciones según sea necesario
-  ];
 
   const eventos = reservas.map(reserva => ({
-    title: reserva.nombre_reservante,
+    title: `${reserva.nombre_reservante} - Sala: ${reserva.sala_numero}`,
     start: new Date(reserva.fecha_inicio),
     end: new Date(reserva.fecha_fin),
-    // Numero de la sala
   }));
 
   return (
