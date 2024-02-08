@@ -27,8 +27,8 @@ class Sala(BaseModel):
 
 # Modelo Pydantic para la reserva
 class Reserva(BaseModel):
-    # sala_id: str
-    sala_numero: str
+    sala_id: str
+    sala_numero: int
     fecha_inicio: datetime
     fecha_fin: datetime
     nombre_reservante: str
