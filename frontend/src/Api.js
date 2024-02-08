@@ -51,10 +51,9 @@ const api = {
     return axios.get(`${url_web}/horarios_disponibles/${getOficina_CookieValue()}?fecha=${fecha}&sala_id=${sala_id}`);
   },
   
-
-//   postSeleccionOficina: (oficinaId) => {
-//     return axios.post(`${url_web}/seleccionar-oficina`, { oficinaId });
-//   },
+  postReservation: (reserva) => {
+    return axios.post(`${url_web}/reservar/${getOficina_CookieValue()}`, reserva);
+  },
 
   // Agrega más funciones según tus necesidades
 };

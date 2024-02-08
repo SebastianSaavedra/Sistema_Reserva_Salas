@@ -58,17 +58,17 @@ const Calendario = () => {
     }
   }, []);
 
+  const onSelectSlot = (data) => {
+    setShowModal(true);
+  };
+
   const onSelectEvent = (event) => {
-    // console.log("Horario clickleado: " + selectedDate);
-    // reservas.forEach(reserva => {
-    //   console.log(reserva.fecha_inicio);
-    // });
+    console.log("Evento clickleado: " + event);
   };
 
   const handler = {
     SelectDate: (date) => {
       setSelectedDate(date);
-      setShowModal(true);
     },
 
     CloseModal: () => {
@@ -80,30 +80,64 @@ const Calendario = () => {
       setHorariosDisponibles(null);
     },
 
-    SalaSelect: async (sala) => {
-      try
-      {
-        setSelectedSala(sala);
-      } catch (error) {
-        console.error('Error al obtener los horarios disponibles:', error);
+    SalaSelect: (sala) => {
+      setSelectedSala(sala);
+      if (horarioInicio && horarioFin) {
+        setHorarioInicio(null);
+        setHorarioFin(null);
       }
     },
 
     HorarioInicioSelect: (horario) => {
       setHorarioInicio(horario);
+      if (horarioFin) {
+        setHorarioFin(null);
+      }
     },
 
     HorarioFinSelect: (horario) => {
       setHorarioFin(horario);
     },
 
-    Submit: () => {
-      console.log('Sala seleccionada:', selectedSala);
-      console.log('Horario de inicio:', horarioInicio);
-      console.log('Horario de fin:', horarioFin);
-      handler.CloseModal();
-    },
+    Submit: async () => {
+      try {
+        // Aquí puedes hacer la llamada a la API para enviar la reserva
+        const reservation = setReservation();
+        const result = await api.postReservation(reservation);
+        console.log(result);
+        // handler.CloseModal();
+      } catch (error) {
+        console.error('Error al realizar la reserva:', error);
+      }
+    },    
+    
   }
+
+  const setReservation = () => {
+    // Fusionar la fecha de selectedDate con los horarios de inicio y fin
+    const fechaInicio = moment(selectedDate).set({
+      hour: parseInt(horarioInicio.split(":")[0]), // Obtener la hora de horarioInicio
+      minute: parseInt(horarioInicio.split(":")[1]) // Obtener los minutos de horarioInicio
+    });
+
+    const fechaFin = moment(selectedDate).set({
+      hour: parseInt(horarioFin.split(":")[0]), // Obtener la hora de horarioFin
+      minute: parseInt(horarioFin.split(":")[1]) // Obtener los minutos de horarioFin
+    });
+
+    console.log('Fecha de inicio:', fechaInicio.format("YYYY-MM-DDTHH:mm:ss"));
+    console.log('Fecha de fin:', fechaFin.format("YYYY-MM-DDTHH:mm:ss"));
+
+    const reserva = {
+      sala_id: selectedSala.id,
+      sala_numero: parseInt(selectedSala.numero),
+      fecha_inicio: fechaInicio.format("YYYY-MM-DDTHH:mm:ss"),
+      fecha_fin: fechaFin.format("YYYY-MM-DDTHH:mm:ss"),
+      nombre_reservante: "Seba"
+    };
+    return reserva;
+  }
+
 
   useEffect(() => {
     if (selectedDate) {
@@ -161,9 +195,11 @@ const Calendario = () => {
           dateCellWrapper: ({ children, value }) =>
             React.cloneElement(children, { "data-date": value }),
         }}
+        views={["month", "week"]}
         localizer={localizer}
         selectable={true}
-        onSelectSlot={onSelectEvent}
+        onSelectSlot={onSelectSlot}
+        onSelectEvent={onSelectEvent}
         style={{ height: 500 }}
         events={eventos}
       />
@@ -173,39 +209,44 @@ const Calendario = () => {
           <Modal.Title>Reservar</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Selecciona una sala:</p>
-          <Dropdown>
-            <Dropdown.Toggle variant="primary" id="dropdown-basic">
-              {selectedSala ? `Sala ${selectedSala.numero}` : 'Sala'}
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {salas.map(sala => (
-                <Dropdown.Item
-                  key={sala.id}
-                  onClick={() => handler.SalaSelect(sala)}
-                >
-                  {sala.numero}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
-          <p>Selecciona un horario de inicio:</p>
-          <Dropdown>
-            <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio">
-              {horarioInicio ? horarioInicio : 'Seleccionar horario de inicio'}
-            </Dropdown.Toggle>
+          <div style={{ marginBottom: '15px' }}>
+            <h6>Selecciona una sala:</h6>
+            <Dropdown>
+              <Dropdown.Toggle variant="primary" id="dropdown-basic">
+                {selectedSala ? `Sala ${selectedSala.numero}` : 'Sala'}
+              </Dropdown.Toggle>
               <Dropdown.Menu>
-                {Array.isArray(horariosDisponibles) && horariosDisponibles.map(horario => (
-                <Dropdown.Item
-                  key={horario.id}
-                  onClick={() => handler.HorarioInicioSelect(horario)}
-                >
-                  {horario}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          </Dropdown>
-          <p>Selecciona un horario de fin:</p>
+                {salas.map(sala => (
+                  <Dropdown.Item
+                    key={sala.id}
+                    onClick={() => handler.SalaSelect(sala)}
+                  >
+                    {sala.numero}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
+          <div style={{ marginBottom: '15px' }}>
+          <h6>Selecciona un horario de inicio:</h6>
+            <Dropdown>
+              <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio">
+                {horarioInicio ? horarioInicio : 'Seleccionar horario de inicio'}
+              </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  {Array.isArray(horariosDisponibles) && horariosDisponibles.map(horario => (
+                  <Dropdown.Item
+                    key={horario}
+                    onClick={() => handler.HorarioInicioSelect(horario)}
+                  >
+                    {horario}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
+          <div style={{ marginBottom: '15px' }}>
+          <h6>Selecciona un horario de fin:</h6>
           <Dropdown>
             <Dropdown.Toggle variant="primary" id="dropdown-horario-fin">
               {horarioFin ? horarioFin : 'Seleccionar horario de fin'}
@@ -213,7 +254,7 @@ const Calendario = () => {
             <Dropdown.Menu>
             {Array.isArray(horariosDisponibles) && horariosFinLimitados.map(horario => (
                 <Dropdown.Item
-                  key={horario.id}
+                  key={horario}
                   onClick={() => handler.HorarioFinSelect(horario)}
                 >
                   {horario}
@@ -221,6 +262,7 @@ const Calendario = () => {
               ))}
             </Dropdown.Menu>
           </Dropdown>
+        </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handler.CloseModal}>

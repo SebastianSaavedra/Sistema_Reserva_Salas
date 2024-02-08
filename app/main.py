@@ -61,14 +61,14 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
             oficina_id=oficina_id,
             request=request
         )
+        print(f"FUNCION verificar_disponibilidad - horarios_disponibles: {horarios_disponibles}")
 
-        # Obtain all reservations for the room and date
         reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
             "sala_id": reserva.sala_id,
             "fecha_inicio": {"$gte": reserva.fecha_inicio.replace(hour=0, minute=0, second=0),
                              "$lt": reserva.fecha_inicio.replace(hour=23, minute=59, second=59)}
         }).to_list(None)
-        print(f"reservas: {reservas_dia}")
+        print(f"FUNCION verificar_disponibilidad - reservas: {reservas_dia}")
 
         if request.method == "PUT":
             if len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante: return True
@@ -116,6 +116,11 @@ async def obtener_salas(db):
 
 async def obtener_reservas(db):
     return await db["reservas"].find().to_list(None)
+
+def parse_fecha(fecha):
+    if isinstance(fecha, str):
+        return datetime.strptime(fecha, "%Y-%m-%d")
+    return fecha
 
 @app.get("/establecer-cookie-oficina/{clave}-{valor}")
 async def establecer_cookie_oficina(clave: str, valor: str):
@@ -176,8 +181,6 @@ async def get_reservas(request: Request, oficina_id: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-
-
 # Operación para obtener una sala por su ID
 # @app.get("/{oficina_id}/salas/{sala_id}", response_model=Sala, response_class=JSONResponse)
 # async def get_sala(sala_id: str, request: Request):
@@ -195,7 +198,6 @@ async def get_reservas(request: Request, oficina_id: str):
 #     except Exception as e:
 #         print(f"Error al obtener sala: {e}")
 #         raise HTTPException(status_code=500, detail="Error interno del servidor")
-
 
 # Operación para obtener una reserva por su ID
 # @app.get("/{oficina_id}/reservas/{reserva_id}", response_class=JSONResponse)
@@ -269,9 +271,7 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
 @app.get("/horarios_disponibles/{oficina_id}")
 async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str, request: Request):
     try:
-        # Convertir la cadena de fecha a objetos datetime
-        fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
-
+        fecha_dt = parse_fecha(fecha)
         # Establecer el rango de tiempo para el día seleccionado
         rango_am = fecha_dt.replace(hour=8, minute=0, second=0)
         rango_pm = fecha_dt.replace(hour=23, minute=59, second=59)
@@ -298,12 +298,12 @@ async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str
         return {f"Error al obtener horarios disponibles: {e}"} 
 
 # Operación para hacer una reserva en la base de datos
-@app.post("/{oficina_id}/reservar/{sala_id}")
-async def hacer_reserva(request: Request,sala_id: str,oficina_id: str,reserva: Reserva):
-    # Iniciar una transacción
+@app.post("/reservar/{oficina_id}", response_class=JSONResponse)
+async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
+    reserva = Reserva(**reserva_json)
     async with await request.app.mongodb_client.start_session() as session:
         try:
-            reserva.sala_id = sala_id
+            print(f"Funcion POST: {reserva}")
             if not await verificar_disponibilidad(reserva, oficina_id, request):
                 raise HTTPException(
                     status_code=400,
@@ -311,14 +311,8 @@ async def hacer_reserva(request: Request,sala_id: str,oficina_id: str,reserva: R
                 )
 
             # Insertar reserva en la colección dentro de la transacción
-            result = await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(exclude={'enlaces'}), session=session)
-
-            response = RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/reservas/{result.inserted_id}", status_code=303)
-
-            ###################### ESTO DEBE SER ELIMINADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
-            response.set_cookie(key="usuario", value=reserva.nombre_reservante)
-            ###################### ESTO DEBE SER ELIMINADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
-            return response
+            await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(), session=session)
+            # return JSONResponse(status_code=200, content={"message": "Reserva realizada exitosamente"})
         except Exception as e:
             # Manejar errores de la transacción
             print(f"Error al hacer reserva: {e}")
