@@ -269,7 +269,7 @@ async def get_reservas_by_room_id(sala_id: str, request: Request):
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
 @app.get("/horarios_disponibles/{oficina_id}")
-async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str, request: Request):
+async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str, request: Request,  reserva_id: Optional[str] = None):
     try:
         fecha_dt = parse_fecha(fecha)
         # Establecer el rango de tiempo para el día seleccionado
@@ -277,11 +277,17 @@ async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str
         rango_pm = fecha_dt.replace(hour=23, minute=59, second=59)
 
         intervalo = timedelta(minutes=60)
+        if reserva_id != "null":
+            reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
+                "_id": {"$ne": ObjectId(reserva_id)},
+                "sala_id": sala_id,
+            }).to_list(None)
+        else:
+            reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
+                "sala_id": sala_id
+            }).to_list(None)
 
-        reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
-            "sala_id": sala_id
-        }).to_list(None)
-
+        # print(f"reservas dia: {reservas_dia} y reserva_id {reserva_id} ")
         horarios_disponibles = []
         while rango_am <= rango_pm:
             ocupado = any(
@@ -303,7 +309,7 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
     reserva = Reserva(**reserva_json)
     async with await request.app.mongodb_client.start_session() as session:
         try:
-            print(f"Funcion POST: {reserva}")
+            # print(f"Funcion POST: {reserva}")
             if not await verificar_disponibilidad(reserva, oficina_id, request):
                 raise HTTPException(
                     status_code=400,
@@ -320,8 +326,9 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
 
 
 # Operación para buscar una reserva mediante el ID de la sala y actualizar el datetime de la reserva
-@app.put("/{oficina_id}/reservas/{reserva_id}/actualizar")
-async def update_reserva(oficina_id: str ,reserva_id: str ,reserva_actualizada: Reserva, request: Request):
+@app.put("/actualizar_reserva/{oficina_id}/{reserva_id}", response_class=JSONResponse)
+async def update_reserva(oficina_id: str ,reserva_id: str ,reserva_actualizada_json: dict, request: Request):
+    reserva_actualizada = Reserva(**reserva_actualizada_json)
     async with await request.app.mongodb_client.start_session() as session:
         # Buscar la reserva por su ID y nombre del usuario
         reserva = await request.app.mongodb_client[oficina_id]["reservas"].find_one({
@@ -333,7 +340,7 @@ async def update_reserva(oficina_id: str ,reserva_id: str ,reserva_actualizada: 
             raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
         # Verificar disponibilidad con la nueva fecha
-        if not await verificar_disponibilidad(reserva_actualizada, request):
+        if not await verificar_disponibilidad(reserva_actualizada, oficina_id, request):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"La sala ya está reservada para ese intervalo de tiempo. "
@@ -349,20 +356,13 @@ async def update_reserva(oficina_id: str ,reserva_id: str ,reserva_actualizada: 
                 {"$set": {"fecha_inicio": reserva_actualizada.fecha_inicio,
                           "fecha_fin": reserva_actualizada.fecha_fin}}
             )
-            # # Obtener la reserva actualizada
-            # nueva_reserva_actualizada = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find_one(
-            #     {"_id": ObjectId(reserva_id)})
-
-        # Confirmar la transacción automáticamente al salir del bloque with
-        return RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/reservas/{reserva_id}", status_code=303)
         # return Reserva(**nueva_reserva_actualizada, oid=str(nueva_reserva_actualizada["_id"]))
 
 # Operación para eliminar una reserva por su ID
-@app.delete("/{oficina_id}/reservas/{reserva_id}/eliminar")
+@app.delete("/eliminar_reserva/{oficina_id}", response_class=JSONResponse)
 async def delete_reserva(oficina_id: str, reserva_id: str, request: Request):
     try:
-        await app.mongodb_client[oficina_id]["reservas"].find_one_and_delete({"_id": ObjectId(reserva_id)})
-        return RedirectResponse(url=f"/{request.cookies.get('oficina_id')}/mis_reservas", status_code=303)
+        await request.app.mongodb_client[oficina_id]["reservas"].find_one_and_delete({"_id": ObjectId(reserva_id)})
     except Exception as e:
         print(f"Error al eliminar sala: {e}")
         raise HTTPException(status_code=404, detail="Sala no encontrada")
