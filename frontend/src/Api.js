@@ -47,15 +47,23 @@ const api = {
     return axios.get(`${url_web}/salas/${getOficina_CookieValue()}`);
   },
 
-  getHorariosDisponibles: (fecha, sala_id) => {
-    return axios.get(`${url_web}/horarios_disponibles/${getOficina_CookieValue()}?fecha=${fecha}&sala_id=${sala_id}`);
+  getHorariosDisponibles: (fecha, sala_id, reserva_id) => {
+    return axios.get(`${url_web}/horarios_disponibles/${getOficina_CookieValue()}?fecha=${fecha}&sala_id=${sala_id}&reserva_id=${reserva_id}`);
   },
   
   postReservation: (reserva) => {
     return axios.post(`${url_web}/reservar/${getOficina_CookieValue()}`, reserva);
   },
+  
+  modifyReservation: (reserva_id, reserva_actualizada) => {
+    return axios.put(`${url_web}/actualizar_reserva/${getOficina_CookieValue()}/${reserva_id}`, reserva_actualizada);
+  },
 
-  // Agrega más funciones según tus necesidades
+  deleteReservation: (reserva_id) => {
+    return axios.delete(`${url_web}/eliminar_reserva/${getOficina_CookieValue()}?reserva_id=${reserva_id}`);
+  },
+
+  
 };
 
 export default api;
