@@ -13,10 +13,6 @@ const getOficina_CookieValue = () => {
 }
 
 const api = {
-  getOficinas: () => {
-    return axios.get(`${url_web}/oficinas`);
-  },
-
   setCookie: (clave, valor, opciones) => {
     let cookieString = `${clave}=${valor}`;
     if (opciones) {
@@ -37,6 +33,10 @@ const api = {
       }
     }
     document.cookie = cookieString;
+  },
+  
+  getOficinas: () => {
+    return axios.get(`${url_web}/oficinas`);
   },
 
   getReservas: () => {
@@ -63,7 +63,5 @@ const api = {
     return axios.delete(`${url_web}/eliminar_reserva/${getOficina_CookieValue()}?reserva_id=${reserva_id}`);
   },
 
-  
 };
-
 export default api;

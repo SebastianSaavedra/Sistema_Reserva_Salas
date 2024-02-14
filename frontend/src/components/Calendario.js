@@ -70,15 +70,18 @@ const Calendario = () => {
   };
 
   const onSelectEvent = (event) => {
-    setSelectedEvent(event);
+    const formatedData = formatReservationData(event);
+    console.log(formatedData);
+    setSelectedEvent(formatedData);
   };
 
   const onReservationClose = (statusCode, statusText) => {
     console.log("onReservationClose");
-    setShowModal(false);  // REFRESCAR EL MODAL DE LOS DETALLES DEL EVENTO LUEGO DE HACER UNA MODIFICACION A LA RESERVA.
-    setIsModifying(false);
+    setShowModal(false);
+    if (isModifying == true) setIsModifying(false);
+
     if ((statusCode && statusCode === 200) || (statusText && statusText === "OK")) {
-      console.log("Llamdo a la api");
+      console.log("Llamado a la api");
       setLlamadoAPI(prev => prev + 1);
     }
   };
@@ -88,10 +91,17 @@ const Calendario = () => {
     setSelectedEvent(null);
     
     if ((statusCode && statusCode === 200) || (statusText && statusText === "OK")) {
-      console.log("Llamdo a la api");
+      console.log("Llamado a la api");
       setLlamadoAPI(prev => prev + 1);
     }
   };
+
+  const onModifiedReservation = (reservationData) => {
+    console.log("onModifiedReservation");
+    const formatedData = formatReservationData(reservationData);
+    console.log(formatedData);
+    setSelectedEvent(formatedData);
+  }
 
   const onModifyModal = () => {
     console.log("Modify Modal");
@@ -104,6 +114,20 @@ const Calendario = () => {
     }
   }, [isModifying]);
   
+  const formatReservationData = (reservationData) => {
+    const formattedStartDate = moment(reservationData.fecha_inicio || reservationData.start).format('YYYY-MM-DDTHH:mm:ss');
+    const formattedEndDate = moment(reservationData.fecha_fin || reservationData.end).format('YYYY-MM-DDTHH:mm:ss');
+    console.log(reservationData);
+    return {
+      nombre_reservante: reservationData.nombre_reservante || reservationData.title.split(' - ')[0],
+      fecha_inicio: formattedStartDate,
+      fecha_fin: formattedEndDate,
+      sala_numero: reservationData.sala_numero,
+      sala_id: reservationData.sala_id,
+      reserva_id: reservationData.reserva_id
+    };
+  };  
+
   const eventos = reservas.map(reserva => ({
     title: `${reserva.nombre_reservante} - Sala: ${reserva.sala_numero}`,
     start: new Date(reserva.fecha_inicio),
@@ -137,10 +161,11 @@ const Calendario = () => {
           isModifying={isModifying}
           selectedEvent={selectedEvent}
           onClose={onReservationClose}
+          onModifiedReservation={onModifiedReservation}
         />
       ) : selectedEvent ? (
         <EventDetailsModal
-          event={selectedEvent}
+          formatedEvent={selectedEvent}
           onModify={onModifyModal}
           onClose={onDetailsClose}
         />

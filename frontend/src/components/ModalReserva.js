@@ -10,7 +10,8 @@ const ModalReserva = ({
   salas,
   isModifying,
   selectedEvent,
-  onClose
+  onClose,
+  onModifiedReservation
 }) => {
   const [selectedSala, setSelectedSala] = useState(null);
   const [horarioInicio, setHorarioInicio] = useState(null);
@@ -19,26 +20,32 @@ const ModalReserva = ({
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState();
   
-  const setReservation = () => {
+  const createReservationDict = () => {
     const fechaInicio = moment(selectedDate).set({
       hour: parseInt(horarioInicio.split(':')[0]),
       minute: parseInt(horarioInicio.split(':')[1]),
     });
-
+  
     const fechaFin = moment(selectedDate).set({
       hour: parseInt(horarioFin.split(':')[0]),
       minute: parseInt(horarioFin.split(':')[1]),
     });
-
+  
     const reserva = {
-      sala_id: selectedSala.id,
+      nombre_reservante: 'Seba', // Esto puede ser dinámico según el usuario actual
       sala_numero: parseInt(selectedSala.numero),
       fecha_inicio: fechaInicio.format('YYYY-MM-DDTHH:mm:ss'),
       fecha_fin: fechaFin.format('YYYY-MM-DDTHH:mm:ss'),
-      nombre_reservante: 'Seba', // Esto puede ser dinámico según el usuario actual
+      sala_id: selectedSala.id,
     };
+  
+    if (selectedEvent && selectedEvent.reserva_id) {
+      reserva.reserva_id = selectedEvent.reserva_id;
+    }
+  
     return reserva;
   };
+  
 
   const handler = {
     ResetModal: () => {
@@ -71,7 +78,7 @@ const ModalReserva = ({
     
     submitReservation: async () => {
         try {
-        const reservation = setReservation();
+        const reservation = createReservationDict();
         setIsLoading(true);
         const result = await api.postReservation(reservation);
         console.log(result);
@@ -84,9 +91,11 @@ const ModalReserva = ({
 
     modifyReservation: async () => {
         try {
-        const reservationData = setReservation();
+        const reservationData = createReservationDict();
+        setIsLoading(true);
         const result = await api.modifyReservation(selectedEvent.reserva_id, reservationData);
         console.log(result);
+        onModifiedReservation(reservationData);
         setStatus(result);
         } catch (error) {
         console.error('Error al modificar la reserva:', error);
@@ -98,8 +107,8 @@ const ModalReserva = ({
   useEffect(() => {
     if (selectedEvent) {
       setSelectedSala({ id: selectedEvent.sala_id, numero: selectedEvent.sala_numero });
-      setHorarioInicio(moment(selectedEvent.start).format('HH:mm'));
-      setHorarioFin(moment(selectedEvent.end).format('HH:mm'));
+      setHorarioInicio(moment(selectedEvent.fecha_inicio).format('HH:mm'));
+      setHorarioFin(moment(selectedEvent.fecha_fin).format('HH:mm'));
     }
   }, [selectedEvent]);
 
