@@ -2,10 +2,12 @@ import React from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import moment from 'moment';
 import 'moment/locale/es';
-import api from '../Api';
+import ApiCaller from '../Api';
 
 const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
   if (!formatedEvent) return null; // Ocultar modal si no hay evento seleccionado
+  const api = ApiCaller();
+
 
   const deleteReservation = async () => {
     console.log("Delete Reservation");

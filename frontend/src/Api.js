@@ -1,67 +1,37 @@
 import axios from 'axios';
+import { useSelector } from 'react-redux';
+import { getOfficeId } from './slices/oficinaSlice';
 
-const url_web="http://localhost:8000"
+const ApiCaller = () => {
+  const url_web="http://localhost:8000"
+  const selectedOfficeId = useSelector(getOfficeId);
 
-const getOficina_CookieValue = () => {
-  const cookieString = document.cookie;
-  let oficina_id_cookie = '';
-  if (cookieString.startsWith("oficina_id="))
-  {
-    oficina_id_cookie = cookieString.split('=')[1];
-  }
-  return oficina_id_cookie;
-}
-
-const api = {
-  setCookie: (clave, valor, opciones) => {
-    let cookieString = `${clave}=${valor}`;
-    if (opciones) {
-      if (opciones.domain) {
-        cookieString += `; domain=${opciones.domain}`;
-      }
-      if (opciones.path) {
-        cookieString += `; path=${opciones.path}`;
-      }
-      if (opciones.expires) {
-        cookieString += `; expires=${opciones.expires.toUTCString()}`;
-      }
-      if (opciones.secure) {
-        cookieString += `; secure`;
-      }
-      if (opciones.sameSite) {
-        cookieString += `; samesite=${opciones.sameSite}`;
-      }
-    }
-    document.cookie = cookieString;
-  },
+  const api = {
+    getReservas: () => {
+      return axios.get(`${url_web}/todas_las_reservas/${selectedOfficeId}`);
+    },
   
-  getOficinas: () => {
-    return axios.get(`${url_web}/oficinas`);
-  },
-
-  getReservas: () => {
-    return axios.get(`${url_web}/todas_las_reservas/${getOficina_CookieValue()}`);
-  },
-
-  getSalas: () => {
-    return axios.get(`${url_web}/salas/${getOficina_CookieValue()}`);
-  },
-
-  getHorariosDisponibles: (fecha, sala_id, reserva_id) => {
-    return axios.get(`${url_web}/horarios_disponibles/${getOficina_CookieValue()}?fecha=${fecha}&sala_id=${sala_id}&reserva_id=${reserva_id}`);
-  },
+    getSalas: () => {
+      return axios.get(`${url_web}/salas/${selectedOfficeId}`);
+    },
   
-  postReservation: (reserva) => {
-    return axios.post(`${url_web}/reservar/${getOficina_CookieValue()}`, reserva);
-  },
+    getHorariosDisponibles: (fecha, sala_id, reserva_id) => {
+      return axios.get(`${url_web}/horarios_disponibles/${selectedOfficeId}?fecha=${fecha}&sala_id=${sala_id}&reserva_id=${reserva_id}`);
+    },
+    
+    postReservation: (reserva) => {
+      return axios.post(`${url_web}/reservar/${selectedOfficeId}`, reserva);
+    },
+    
+    modifyReservation: (reserva_id, reserva_actualizada) => {
+      return axios.put(`${url_web}/actualizar_reserva/${selectedOfficeId}/${reserva_id}`, reserva_actualizada);
+    },
   
-  modifyReservation: (reserva_id, reserva_actualizada) => {
-    return axios.put(`${url_web}/actualizar_reserva/${getOficina_CookieValue()}/${reserva_id}`, reserva_actualizada);
-  },
-
-  deleteReservation: (reserva_id) => {
-    return axios.delete(`${url_web}/eliminar_reserva/${getOficina_CookieValue()}?reserva_id=${reserva_id}`);
-  },
-
+    deleteReservation: (reserva_id) => {
+      return axios.delete(`${url_web}/eliminar_reserva/${selectedOfficeId}?reserva_id=${reserva_id}`);
+    },
+  
+  };
+  return api;
 };
-export default api;
+export default ApiCaller;

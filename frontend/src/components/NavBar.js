@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectOfficeId, getAllOffices, saveOffices } from '../slices/oficinaSlice';
+import { selectOfficeId, getAllOffices } from '../slices/oficinaSlice';
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Form from 'react-bootstrap/Form';
-import api from '../Api';
 
 function NavigationBar() {
   const dispatch = useDispatch();
@@ -14,18 +13,12 @@ function NavigationBar() {
   const [oficinaToggle, setOficinaToggle] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await api.getOficinas();
-        dispatch(saveOffices(response.data));
-        setOficinaToggle(response.data[0].nombre);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error al solicitar las oficinas al backend:', error);
-      }
-    };
-    fetchData();
-  }, [dispatch]);
+    if (oficinas)
+    {
+      setOficinaToggle(oficinas[0].nombre);
+      setLoading(false);
+    }
+  }, [oficinas]);
 
   useEffect(() => {
     if (oficinaToggle) {
@@ -39,11 +32,10 @@ function NavigationBar() {
     setOficinaToggle(oficinas[nextIndex].nombre);
   };
 
-  const saveStateAndCookies = () => { // ARREGLAR EL TEMA DE LAS COOKIES YA QUE NO LE LLEGAN AL PUTO SERVIDOR WEON QUE CHUCHA XD
+  const saveStateAndCookies = () => {
     const currentOffice = oficinas.find(office => office.nombre === oficinaToggle);
     if (currentOffice) {
       dispatch(selectOfficeId(currentOffice.oficina_id));
-      api.setCookie("oficina_id", currentOffice.oficina_id);
     }
   };
 

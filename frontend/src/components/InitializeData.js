@@ -1,24 +1,17 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import api from '../Api';
-import { saveOffices } from '../slices/oficinaSlice';
+import { saveOfficesData } from '../slices/oficinaSlice';
 
 const InitializeData = ({ children }) => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const response = await api.getOficinas();
-        console.log('Respuesta del backend:', response.data);
-        dispatch(saveOffices(response.data));
-        console.log('Oficinas guardadas en el estado:', response.data);
-      } catch (error) {
-        console.error('Error al solicitar las oficinas al backend:', error);
-      }
-    }
-    fetchData();
-  }, [dispatch]);  
+    const oficinas_data = [
+      { nombre: "Florida Center", oficina_id: "florida_center" },
+      { nombre: "Alto Las Condes", oficina_id: "alto_las_condes" }
+    ];
+    dispatch(saveOfficesData(oficinas_data));
+  }, [dispatch]);
 
   return children;
 };
