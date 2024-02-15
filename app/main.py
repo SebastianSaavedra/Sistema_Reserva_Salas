@@ -54,12 +54,13 @@ class Reserva(BaseModel):
 
 async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Request):
     try:
-        # Obtain available time slots for the specified room and date
+        print(f"FUNCION verificar_disponibilidad - reserva: {reserva}")
         horarios_disponibles = await obtener_horarios_disponibles(
             fecha=reserva.fecha_inicio,
             sala_id=reserva.sala_id,
             oficina_id=oficina_id,
-            request=request
+            request=request,
+            reserva_id=request.path_params['reserva_id'] if request.method == 'PUT' else None
         )
         print(f"FUNCION verificar_disponibilidad - horarios_disponibles: {horarios_disponibles}")
 
@@ -70,6 +71,9 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
         }).to_list(None)
         print(f"FUNCION verificar_disponibilidad - reservas: {reservas_dia}")
 
+        print("REQUEST PARAMS: ")
+        print(request.path_params)
+        print(f"reserva: {reserva}")
         if request.method == "PUT":
             if len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante: return True
             for r in reservas_dia:
@@ -105,6 +109,7 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
     except Exception as e:
         # Handle errors
         print(f"Error en la verificación de disponibilidad: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -128,24 +133,24 @@ async def establecer_cookie_oficina(clave: str, valor: str):
     response.set_cookie(key=clave, value=valor)
     return response
 
-# Página inicial para seleccionar la oficina
-@app.get("/oficinas", response_class=JSONResponse)
-async def get_office_data(request: Request):
-    oficinas_data = [
-        {"nombre": "Florida Center", "oficina_id": "florida_center"},
-        {"nombre": "Alto Las Condes", "oficina_id": "alto_las_condes"}
-    ]
-    # response_data = {
-    #     "request_info": {
-    #         "method": request.method,
-    #         "path_params": request.path_params,
-    #         "query_params": request.query_params,
-    #         "cookies": request.cookies,
-    #         "headers": request.headers
-    #     },
-    #     "oficinas_data": oficinas_data
-    # }
-    return oficinas_data
+# Página inicial para obtener la data de las oficinas
+# @app.get("/oficinas", response_class=JSONResponse)
+# async def get_office_data(request: Request):
+#     oficinas_data = [
+#         {"nombre": "Florida Center", "oficina_id": "florida_center"},
+#         {"nombre": "Alto Las Condes", "oficina_id": "alto_las_condes"}
+#     ]
+#     # response_data = {
+#     #     "request_info": {
+#     #         "method": request.method,
+#     #         "path_params": request.path_params,
+#     #         "query_params": request.query_params,
+#     #         "cookies": request.cookies,
+#     #         "headers": request.headers
+#     #     },
+#     #     "oficinas_data": oficinas_data
+#     # }
+#     return oficinas_data
 
 # Lista de Salas de una Oficina
 @app.get("/salas/{oficina_id}", response_class=JSONResponse)
@@ -329,6 +334,7 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
 @app.put("/actualizar_reserva/{oficina_id}/{reserva_id}", response_class=JSONResponse)
 async def update_reserva(oficina_id: str ,reserva_id: str ,reserva_actualizada_json: dict, request: Request):
     reserva_actualizada = Reserva(**reserva_actualizada_json)
+    print(reserva_actualizada)
     async with await request.app.mongodb_client.start_session() as session:
         # Buscar la reserva por su ID y nombre del usuario
         reserva = await request.app.mongodb_client[oficina_id]["reservas"].find_one({

@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import moment from 'moment';
 import 'moment/locale/es';
-import api from '../Api';
+import ApiCaller from '../Api';
 import EventDetailsModal from './EventDetailsModal';
-import ModalReserva from './ModalReserva'; // Importa el componente del modal de reserva
+import ModalReserva from './ModalReserva';
+import { getOfficeId } from '../slices/oficinaSlice';
 
 const localizer = momentLocalizer(moment);
 
 const Calendario = () => {
+  const api = ApiCaller();
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [reservas, setReservas] = useState([]);
@@ -17,6 +20,8 @@ const Calendario = () => {
   const [showModal, setShowModal] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [llamadoAPI, setLlamadoAPI] = useState(0);
+  const officeId = useSelector(getOfficeId);
+  const [loadingSalas,setLoadingSalas] = useState(false);
   const calendarRef = useRef(null);
 
   useEffect(() => {
@@ -24,13 +29,18 @@ const Calendario = () => {
       try {
         const salasResponse = await api.getSalas();
         const numerosSalas = salasResponse.data.map(sala => ({ numero: sala.numero, id: sala._id }));
+        console.log(salasResponse);
         setSalas(numerosSalas);
       } catch (error) {
         console.error('Error al solicitar las salas al backend:', error);
       }
     };
+    if(!loadingSalas) {
     fetchSalas();
-  }, []);
+    setLoadingSalas(true);
+
+    }
+  }, [loadingSalas]);
   
   useEffect(() => {
     const fetchReservas = async () => {
@@ -41,8 +51,10 @@ const Calendario = () => {
         console.error('Error al solicitar las reservas al backend:', error);
       }
     };
-    fetchReservas();
-  }, [llamadoAPI]);
+    if (officeId){
+      fetchReservas();
+    }
+  }, [officeId, llamadoAPI]);
   
   useEffect(() => {
     const ref = calendarRef.current;
@@ -99,7 +111,6 @@ const Calendario = () => {
   const onModifiedReservation = (reservationData) => {
     console.log("onModifiedReservation");
     const formatedData = formatReservationData(reservationData);
-    console.log(formatedData);
     setSelectedEvent(formatedData);
   }
 

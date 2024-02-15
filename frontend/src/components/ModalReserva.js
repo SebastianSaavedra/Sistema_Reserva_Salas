@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Dropdown } from 'react-bootstrap';
 import moment from 'moment';
 import 'moment/locale/es';
-import api from '../Api';
+import ApiCaller from '../Api';
 
 const ModalReserva = ({
   show,
@@ -13,6 +13,7 @@ const ModalReserva = ({
   onClose,
   onModifiedReservation
 }) => {
+  const api = ApiCaller();
   const [selectedSala, setSelectedSala] = useState(null);
   const [horarioInicio, setHorarioInicio] = useState(null);
   const [horarioFin, setHorarioFin] = useState(null);
