@@ -20,6 +20,8 @@ const ModalReserva = ({
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState();
+  const [isPeriodic, setIsPeriodic] = useState(false);
+  const [periodicMonths, setPeriodicMonths] = useState(2);
   
   const createReservationDict = () => {
     const fechaInicio = moment(selectedDate).set({
@@ -33,11 +35,12 @@ const ModalReserva = ({
     });
   
     const reserva = {
-      nombre_reservante: 'Seba', // Esto puede ser dinámico según el usuario actual
+      nombre_reservante: 'Seba', // El usuario esta basado en la autenticacion, por ahora 'Seba' es para testear
       sala_numero: parseInt(selectedSala.numero),
       fecha_inicio: fechaInicio.format('YYYY-MM-DDTHH:mm:ss'),
       fecha_fin: fechaFin.format('YYYY-MM-DDTHH:mm:ss'),
       sala_id: selectedSala.id,
+      periodic_Months: isPeriodic ? periodicMonths : null
     };
   
     if (selectedEvent && selectedEvent.reserva_id) {
@@ -50,12 +53,13 @@ const ModalReserva = ({
 
   const handler = {
     ResetModal: () => {
+      setSelectedSala(null);
+      setHorarioInicio(null);
+      setHorarioFin(null);
+      setIsPeriodic(false);
+      setHorariosDisponibles([]);
+      setStatus(null);
         status ? onClose(status.status, status.statusText) : onClose();
-        setSelectedSala(null);
-        setHorarioInicio(null);
-        setHorarioFin(null);
-        setHorariosDisponibles([]);
-        setStatus(null);
     },
 
     SalaSelect: (sala) => {
@@ -82,6 +86,20 @@ const ModalReserva = ({
         const reservation = createReservationDict();
         setIsLoading(true);
         const result = await api.postReservation(reservation);
+        console.log(result);
+        setStatus(result);
+        } catch (error) {
+        console.error('Error al realizar la reserva:', error);
+        setIsLoading(false);
+        }
+    },
+    
+    submitPeriodicReservation: async () => {
+      console.log(periodicMonths);
+        try {
+        const reservation = createReservationDict();
+        setIsLoading(true);
+        const result = await api.postPeriodicReservation(reservation);
         console.log(result);
         setStatus(result);
         } catch (error) {
@@ -164,6 +182,15 @@ const ModalReserva = ({
   };
   const horariosFinLimitados = limitarHorariosFin();
 
+  const handleTogglePeriodic = () => {
+    setIsPeriodic(!isPeriodic);
+  };
+
+  const handleSelectMonths = (months) => {
+    setPeriodicMonths(months);
+  };
+
+
   return (
     <Modal show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>
@@ -228,12 +255,43 @@ const ModalReserva = ({
             </Dropdown.Menu>
           </Dropdown>
         </div>
+        <div style={{ marginBottom: '15px' }}>
+          <h6>¿Reserva periódica?</h6>
+          <label>
+            <input
+              type="checkbox"
+              checked={isPeriodic}
+              onChange={handleTogglePeriodic}
+            />{' '}
+            Sí
+          </label>
+        </div>
+        {isPeriodic && (
+          <div style={{ marginBottom: '15px' }}>
+            <h6>Selecciona la cantidad de meses:</h6>
+            <Dropdown>
+              <Dropdown.Toggle variant="primary" id="dropdown-months">
+                {periodicMonths} meses
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((months) => (
+                  <Dropdown.Item
+                    key={months}
+                    onClick={() => handleSelectMonths(months)}
+                  >
+                    {months} meses
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
+        )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={handler.ResetModal} disabled={isLoading}>
           Cancelar
         </Button>
-        <Button variant="primary" onClick={isModifying ? handler.modifyReservation : handler.submitReservation} disabled={isLoading}>
+        <Button variant="primary" onClick={isModifying ? handler.modifyReservation : isPeriodic ? handler.submitPeriodicReservation : handler.submitReservation} disabled={isLoading}>
           {isModifying ? 'Guardar cambios' : 'Guardar reserva'}
         </Button>
       </Modal.Footer>

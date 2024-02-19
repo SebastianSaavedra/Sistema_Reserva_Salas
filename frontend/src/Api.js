@@ -8,19 +8,26 @@ const ApiCaller = () => {
 
   const api = {
     getReservas: () => {
+      console.log(selectedOfficeId);
       return axios.get(`${url_web}/todas_las_reservas/${selectedOfficeId}`);
     },
   
     getSalas: () => {
+      console.log(selectedOfficeId);
       return axios.get(`${url_web}/salas/${selectedOfficeId}`);
     },
   
     getHorariosDisponibles: (fecha, sala_id, reserva_id) => {
+      console.log(selectedOfficeId);
       return axios.get(`${url_web}/horarios_disponibles/${selectedOfficeId}?fecha=${fecha}&sala_id=${sala_id}&reserva_id=${reserva_id}`);
     },
     
     postReservation: (reserva) => {
       return axios.post(`${url_web}/reservar/${selectedOfficeId}`, reserva);
+    },
+    
+    postPeriodicReservation: (reserva) => {
+      return axios.post(`${url_web}/reservar_periodica/${selectedOfficeId}`, reserva);
     },
     
     modifyReservation: (reserva_id, reserva_actualizada) => {
