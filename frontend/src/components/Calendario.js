@@ -21,7 +21,6 @@ const Calendario = () => {
   const [isModifying, setIsModifying] = useState(false);
   const [llamadoAPI, setLlamadoAPI] = useState(0);
   const officeId = useSelector(getOfficeId);
-  const [loadingSalas,setLoadingSalas] = useState(false);
   const calendarRef = useRef(null);
 
   useEffect(() => {
@@ -35,12 +34,8 @@ const Calendario = () => {
         console.error('Error al solicitar las salas al backend:', error);
       }
     };
-    if(!loadingSalas) {
     fetchSalas();
-    setLoadingSalas(true);
-
-    }
-  }, [loadingSalas]);
+  }, [officeId]);
   
   useEffect(() => {
     const fetchReservas = async () => {
@@ -75,6 +70,12 @@ const Calendario = () => {
       };
     }
   }, []);
+
+  useEffect(() => {
+    if (isModifying) {
+    setShowModal(true);
+    }
+  }, [isModifying]);
 
   const onSelectSlot = (data) => {
     console.log("onSelectSlot: " + selectedDate);
@@ -118,12 +119,6 @@ const Calendario = () => {
     console.log("Modify Modal");
     setIsModifying(true);
   };
-
-  useEffect(() => {
-    if (isModifying) {
-    setShowModal(true);
-    }
-  }, [isModifying]);
   
   const formatReservationData = (reservationData) => {
     const formattedStartDate = moment(reservationData.fecha_inicio || reservationData.start).format('YYYY-MM-DDTHH:mm:ss');
@@ -155,7 +150,7 @@ const Calendario = () => {
           dateCellWrapper: ({ children, value }) =>
             React.cloneElement(children, { "data-date": value }),
         }}
-        views={["month", "week"]}
+        views={["month", "week", "agenda"]}
         localizer={localizer}
         selectable={true}
         onSelectSlot={onSelectSlot}
