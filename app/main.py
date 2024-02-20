@@ -7,6 +7,9 @@ from bson import ObjectId, json_util
 from pydantic import BaseModel
 import calendar
 from datetime import datetime, timedelta
+from dateutil.rrule import rrule, MONTHLY
+from dateutil.relativedelta import relativedelta
+from dateutil.rrule import MO, TU, WE, TH, FR, SA, SU
 from typing import List, Dict, Union, Optional
 # from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -101,14 +104,18 @@ def parse_fecha(fecha):
         return datetime.strptime(fecha, "%Y-%m-%d")
     return fecha
 
-def calcular_mes_periodico(reserva, mes):
-    mes_inicio = reserva.fecha_inicio.month
-    mes_final = mes_inicio + mes - 1
+def obtener_fechas_periodicas(fecha_inicio, dia_semana, semana_mes, cantidad):
+    try:
+        # Mapeo de los nombres de los días de la semana a sus códigos correspondientes
+        dia_semana_map = {'lunes': MO, 'martes': TU, 'miercoles': WE, 'jueves': TH, 'viernes': FR, 'sabado': SA, 'domingo': SU}
 
-    if mes_final > 12:
-        mes_final = mes_final % 12
-    return mes_final
-
+        fechas = [fecha_inicio]
+        fecha_fin = fecha_inicio + relativedelta(months=cantidad)
+        fechas += list(rrule(MONTHLY, count=cantidad - 1, byweekday=dia_semana_map[dia_semana](semana_mes), dtstart=fecha_inicio, until=fecha_fin))
+        return fechas
+    except Exception as e:
+        raise ValueError("Error al calcular las fechas de reserva periódica:", e)
+    
 # Lista de Salas de una Oficina
 @app.get("/salas/{oficina_id}", response_class=JSONResponse)
 async def mostrar_lista_salas(request: Request, oficina_id: str):
@@ -205,76 +212,58 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
     async with await request.app.mongodb_client.start_session() as session:
         try:
             await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(), session=session)
-            # return JSONResponse(status_code=200, content={"message": "Reserva realizada exitosamente"})
         except Exception as e:
             # Manejar errores de la transacción
             print(f"Error al hacer reserva: {e}")
             raise HTTPException(status_code=500, detail="Error interno del servidor")
+    
+    return JSONResponse(status_code=200, content={"message": "Reserva realizada exitosamente"})
 
 @app.post("/reservar_periodica/{oficina_id}", response_class=JSONResponse)
 async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: Request):
     reserva = Reserva(**reserva_json)
-    reservas_creadas = []
-
+    print(reserva.fecha_inicio)
     try:
         if not await verificar_disponibilidad(reserva, oficina_id, request):
             raise HTTPException(
                 status_code=400,
                 detail="La sala ya está reservada para ese intervalo de tiempo."
             )
-        
-        # Crear todas las reservas periódicas en memoria
-        fecha_reserva = reserva.fecha_inicio
-        print(f"fecha_reserva_1 {fecha_reserva}")
-        for _ in range(reserva.periodic_Months):
-            dias_en_mes = calendar.monthrange(fecha_reserva.year, fecha_reserva.month)[1]
-            fecha_reserva = fecha_reserva.replace(day=1) + timedelta(days=dias_en_mes)
+        dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+        dia_semana_reserva = reserva.fecha_inicio.weekday()
 
-            # Determinar en qué semana de la reserva original se encuentra
-            calendario_inicio = calendar.monthcalendar(reserva.fecha_inicio.year, reserva.fecha_inicio.month)
-            semana_inicio = next((semana for semana in calendario_inicio if reserva.fecha_inicio.day in semana), None)
-            print(f"calendario_inicio {calendario_inicio}")
-            print(f"semana_inicio {semana_inicio}")
+        calendario_inicio = calendar.monthcalendar(reserva.fecha_inicio.year, reserva.fecha_inicio.month)
+        semana_inicio = next((i for i, semana in enumerate(calendario_inicio) if reserva.fecha_inicio.day in semana), None)
+        fechas_reserva = obtener_fechas_periodicas(reserva.fecha_inicio, dias_semana[dia_semana_reserva], semana_inicio, reserva.periodic_Months)
 
-            # CORRE EL CODIGO PARA REVISAR LOS PRINTS Y SABER QUE FALTA
+        reservas_creadas = []
+        for fecha in fechas_reserva:
+            nueva_reserva_dict = reserva.model_dump().copy()
+            nueva_reserva_dict['fecha_inicio'] = nueva_reserva_dict['fecha_inicio'].replace(year=fecha.year, month=fecha.month, day=fecha.day)
+            nueva_reserva_dict['fecha_fin'] = nueva_reserva_dict['fecha_fin'].replace(year=fecha.year, month=fecha.month, day=fecha.day)
 
-            # Encontrar el primer día de la semana equivalente en el mes siguiente
-            calendario_siguiente = calendar.monthcalendar(fecha_reserva.year, fecha_reserva.month)
-            semana_equivalente = next((semana for semana in calendario_siguiente if semana[0] == semana_inicio[0]), None)
-            print(f"calendario_siguiente {calendario_siguiente}")
-            print(f"semana_equivalente {semana_equivalente}")
+            # Verificar disponibilidad para cada reserva periódica
+            if not await verificar_disponibilidad(Reserva(**nueva_reserva_dict), oficina_id, request):
+                raise HTTPException(
+                    status_code=400,
+                    detail="La sala ya está reservada para ese intervalo de tiempo."
+                )
+            reservas_creadas.append(nueva_reserva_dict)
 
-            # Asegurarse de que la semana equivalente exista en el siguiente mes
-            if semana_equivalente:
-                # Encontrar el día de la reserva original en la semana equivalente
-                dia_reserva_semana_siguiente = next((dia for dia in semana_equivalente if dia >= reserva.fecha_inicio.weekday()), None)
+        async with await request.app.mongodb_client.start_session() as session:
+            try:
+                for reserva_periodica in reservas_creadas:
+                    await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva_periodica, session=session)
+            except Exception as e:
+                # Manejar errores de la transacción
+                print(f"Error al hacer reserva: {e}")
+                raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-                # Si se encuentra el día de la reserva original en la semana equivalente, establecer esa fecha
-                if dia_reserva_semana_siguiente:
-                    fecha_reserva = fecha_reserva.replace(day=dia_reserva_semana_siguiente)
-                    print(f"fecha_reserva_final {fecha_reserva}")
-
-                    # Crear una nueva reserva con la fecha ajustada
-                    nueva_reserva_dict = reserva.model_dump().copy()
-                    nueva_reserva_dict['fecha_inicio'] = nueva_reserva_dict['fecha_inicio'].replace(year=fecha_reserva.year, month=fecha_reserva.month, day=fecha_reserva.day)
-                    nueva_reserva_dict['fecha_fin'] = nueva_reserva_dict['fecha_fin'].replace(year=fecha_reserva.year, month=fecha_reserva.month, day=fecha_reserva.day)
-
-                    # Verificar disponibilidad para cada reserva periódica
-                    if not await verificar_disponibilidad(Reserva(**nueva_reserva_dict), oficina_id, request):
-                        raise HTTPException(
-                            status_code=400,
-                            detail="La sala ya está reservada para ese intervalo de tiempo."
-                        )
-
-                    reservas_creadas.append(nueva_reserva_dict)
-            else:
-                print("No se encontró una semana equivalente en el siguiente mes.")
-
-        print(f"reservas_creadas {reservas_creadas}")
+        return JSONResponse(status_code=200, content={"message": "Reservas realizadas exitosamente"})
 
     except Exception as e:
         print(f"Error al hacer reserva: {e}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor") 
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Operación para buscar una reserva mediante el ID de la sala y actualizar el datetime de la reserva
