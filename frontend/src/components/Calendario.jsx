@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
+import { Calendar, momentLocalizer, ToolBarView } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import moment from 'moment';
 import 'moment/locale/es';
@@ -8,7 +8,8 @@ import ApiCaller from '../Api';
 import EventDetailsModal from './EventDetailsModal';
 import ModalReserva from './ModalReserva';
 import { getOfficeId } from '../slices/oficinaSlice';
-import CustomAgendaView from '../views/CustomAgendaView';
+import AgendaView from '../views/CustomAgendaView';
+import CustomToolbar from './CustomToolbar';
 
 const localizer = momentLocalizer(moment);
 
@@ -148,14 +149,16 @@ const Calendario = () => {
     <div ref={calendarRef}>
       <Calendar
         components={{
+          toolbar: CustomToolbar,
           dateCellWrapper: ({ children, value }) =>
             React.cloneElement(children, { "data-date": value })
         }}
         views={{
           month: true,
           week: true,
-          agenda: true
+          misReservas: AgendaView 
         }}
+        messages={{ previous: "<", today: ".", next: ">", month: "Mes", week: "Semana", misReservas: "Mis Reservas" }}
         localizer={localizer}
         selectable={true}
         onSelectSlot={onSelectSlot}
