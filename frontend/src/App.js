@@ -13,10 +13,7 @@ function App() {
       <NavigationBar />
       <Router>
         <Routes>
-          {/* <Route path="/home" element={<ElegirOficina />} /> */}
           <Route path="/*" element={<Calendario />} />
-          {/* <Route path="/misreservas" element={<MisReservas />} /> */}
-          {/* Puedes agregar más rutas según sea necesario */}
         </Routes>
       </Router>
     </div>

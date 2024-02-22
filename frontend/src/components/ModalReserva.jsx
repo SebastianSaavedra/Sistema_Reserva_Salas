@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Dropdown } from 'react-bootstrap';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment';
 import 'moment/locale/es';
 import ApiCaller from '../Api';
@@ -22,17 +24,28 @@ const ModalReserva = ({
   const [status, setStatus] = useState();
   const [isPeriodic, setIsPeriodic] = useState(false);
   const [periodicMonths, setPeriodicMonths] = useState(2);
+  const [newDate, setNewDate] = useState(selectedDate);
   
   const createReservationDict = () => {
-    const fechaInicio = moment(selectedDate).set({
-      hour: parseInt(horarioInicio.split(':')[0]),
-      minute: parseInt(horarioInicio.split(':')[1]),
-    });
+    const fechaInicio = moment(selectedDate).isSame(newDate) ? 
+        moment(selectedDate).set({
+            hour: parseInt(horarioInicio.split(':')[0]),
+            minute: parseInt(horarioInicio.split(':')[1]),
+        }) :
+        moment(newDate).set({
+            hour: parseInt(horarioInicio.split(':')[0]),
+            minute: parseInt(horarioInicio.split(':')[1]),
+        });
   
-    const fechaFin = moment(selectedDate).set({
-      hour: parseInt(horarioFin.split(':')[0]),
-      minute: parseInt(horarioFin.split(':')[1]),
-    });
+    const fechaFin = moment(selectedDate).isSame(newDate) ? 
+        moment(selectedDate).set({
+            hour: parseInt(horarioFin.split(':')[0]),
+            minute: parseInt(horarioFin.split(':')[1]),
+        }) :
+        moment(newDate).set({
+            hour: parseInt(horarioFin.split(':')[0]),
+            minute: parseInt(horarioFin.split(':')[1]),
+        });
   
     const reserva = {
       nombre_reservante: 'Seba', // El usuario esta basado en la autenticacion, por ahora 'Seba' es para testear
@@ -50,7 +63,6 @@ const ModalReserva = ({
     return reserva;
   };
   
-
   const handler = {
     ResetModal: () => {
       setSelectedSala(null);
@@ -110,8 +122,8 @@ const ModalReserva = ({
 
     modifyReservation: async () => {
         try {
-        const reservationData = createReservationDict();
         setIsLoading(true);
+        const reservationData = createReservationDict();
         const result = await api.modifyReservation(selectedEvent.reserva_id, reservationData);
         console.log(result);
         onModifiedReservation(reservationData);
@@ -198,7 +210,7 @@ const ModalReserva = ({
       </Modal.Header>
       <Modal.Body>
         <div style={{ marginBottom: '15px' }}>
-          <h6>Selecciona una sala:</h6>
+          {isModifying ? <h6>Sala seleccionada</h6> : <h6>Selecciona una sala:</h6>}
           <Dropdown>
             <Dropdown.Toggle
               variant="primary"
@@ -219,6 +231,16 @@ const ModalReserva = ({
             </Dropdown.Menu>
           </Dropdown>
         </div>
+        {isModifying && (
+          <div style={{ marginBottom: '15px' }}>
+            <h6>Selecciona una nueva fecha:</h6>
+              <DatePicker
+                  selected={newDate}
+                  onChange={(date) => setNewDate(date)}
+                  dateFormat="dd-MM-yyyy"
+                />
+          </div>
+        )}
         <div style={{ marginBottom: '15px' }}>
           <h6>Selecciona un horario de inicio:</h6>
           <Dropdown>
@@ -255,7 +277,7 @@ const ModalReserva = ({
             </Dropdown.Menu>
           </Dropdown>
         </div>
-        <div style={{ marginBottom: '15px' }}>
+        {!isModifying && <div style={{ marginBottom: '15px' }}>
           <h6>¿Reserva periódica?</h6>
           <label>
             <input
@@ -265,7 +287,7 @@ const ModalReserva = ({
             />{' '}
             Sí
           </label>
-        </div>
+        </div>}
         {isPeriodic && (
           <div style={{ marginBottom: '15px' }}>
             <h6>Selecciona la cantidad de meses:</h6>
