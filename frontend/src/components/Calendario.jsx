@@ -8,6 +8,7 @@ import ApiCaller from '../Api';
 import EventDetailsModal from './EventDetailsModal';
 import ModalReserva from './ModalReserva';
 import { getOfficeId } from '../slices/oficinaSlice';
+import CustomAgendaView from '../views/CustomAgendaView';
 
 const localizer = momentLocalizer(moment);
 
@@ -148,9 +149,13 @@ const Calendario = () => {
       <Calendar
         components={{
           dateCellWrapper: ({ children, value }) =>
-            React.cloneElement(children, { "data-date": value }),
+            React.cloneElement(children, { "data-date": value })
         }}
-        views={["month", "week", "agenda"]}
+        views={{
+          month: true,
+          week: true,
+          agenda: true
+        }}
         localizer={localizer}
         selectable={true}
         onSelectSlot={onSelectSlot}
@@ -179,5 +184,12 @@ const Calendario = () => {
     </div>
   );
 };
+
+//#region CustomAgendaView
+
+
+
+//#endregion
+
 
 export default Calendario;

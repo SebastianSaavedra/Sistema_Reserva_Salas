@@ -27,7 +27,7 @@ class Reserva(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
     nombre_reservante: str
-    periodic_Months: int
+    periodic_Months: Optional[int] = None
 
 async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Request):
     try:

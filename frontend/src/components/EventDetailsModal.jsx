@@ -41,7 +41,7 @@ const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
           Cerrar
         </Button>
         <Button variant="info" onClick={onModify}>
-          Modificar horario
+          Modificar reserva
         </Button>
         <Button variant="danger" onClick={deleteReservation}>
           Eliminar
