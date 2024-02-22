@@ -47,9 +47,7 @@ function NavigationBar() {
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="me-auto">
-              {/* <Nav.Link href="home">Oficinas</Nav.Link> */}
-              <Nav.Link href="calendario">Calendario</Nav.Link>
-              {/* <Nav.Link href="#reservas">Mis Reservas</Nav.Link> */}
+              <Nav.Link href="/">Calendario</Nav.Link>
             </Nav>
             <Form.Check
               type="switch"

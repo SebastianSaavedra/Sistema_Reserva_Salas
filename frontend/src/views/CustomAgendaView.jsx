@@ -1,59 +1,26 @@
-// import React, { useState, useEffect, useMemo } from 'react';
-// import moment from 'moment';
-// import { Navigate } from 'react-big-calendar';
-// import { Agenda } from 'react-big-calendar';
+import React from 'react';
+import { DateLocalizer, Views } from 'react-big-calendar';
+import moment from 'moment';
 
-// const CustomAgendaView = ({ date, localizer, ...props }) => {
-//   const [events, setEvents] = useState([]);
+const AgendaView = ({
+  date,
+  localizer,
+  onView,
+  onNavigate,
+  events,
+}) => {
+  return "Mis reservas hehe aun me faltan escribir el codigo pa esta wea pero por lo menos logré crear esta vista ctm me estaba volviendo loco XDDDDDDDDDDDDDDDDDDDDDDDDDD"
+};
 
-//   useEffect(() => {
-//     // Simular la carga de eventos para la fecha actual
-//     const start = moment(date).startOf('day');
-//     const end = moment(start).endOf('day');
-//     setEvents([
-//       {
-//         title: 'Evento 1',
-//         start,
-//         end,
-//       },
-//       {
-//         title: 'Evento 2',
-//         start: moment(start).add(1, 'hour'),
-//         end: moment(start).add(2, 'hours'),
-//       },
-//     ]);
-//   }, [date]);
+AgendaView.range = (date, { localizer }) => {
+    return null;
+};
 
-//   const currRange = useMemo(() => {
-//     return [moment(date).startOf('day'), moment(date).endOf('day')];
-//   }, [date]);
+AgendaView.navigate = (date, action, { localizer }) => {
+    return null;
+};
 
-//   return (
-//     <Agenda
-//       date={date}
-//       eventOffset={15}
-//       localizer={localizer}
-//       range={currRange}
-//       scrollToTime={moment(date).startOf('day')}
-//       events={events}
-//       {...props}
-//     />
-//   );
-// };
-
-// CustomAgendaView.title = (date, { formats }) => {
-//   return formats.dayRangeHeaderFormat({ start: date, end: date });
-// };
-
-// CustomAgendaView.navigate = (date, action) => {
-//   switch (action) {
-//     case Navigate.PREV:
-//       return moment(date).subtract(1, 'day');
-//     case Navigate.NEXT:
-//       return moment(date).add(1, 'day');
-//     default:
-//       return date;
-//   }
-// };
-
-// export default CustomAgendaView;
+AgendaView.title = (date, { localizer }) => {
+    return null;
+};
+export default AgendaView;
