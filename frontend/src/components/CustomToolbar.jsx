@@ -2,6 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import clsx from 'clsx'
 import { Navigate as navigate } from 'react-big-calendar';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 function ViewNamesGroup({ views: viewNames, view, messages, onView }) {
   return viewNames.map((name) => (
@@ -30,6 +31,7 @@ export default function CustomToolbar({
   view,
   views,
 }) {
+  const isMisReservasView = view === 'misReservas';
   return (
     <div className="rbc-toolbar">
       <span className="rbc-btn-group">
@@ -43,7 +45,7 @@ export default function CustomToolbar({
 
       <span className="rbc-toolbar-label">{label}</span>
 
-      <span className={clsx('rbc-btn-group', 'examples--custom-toolbar')}>
+      <span className={clsx('rbc-btn-group')}>
         <button
           type="button"
           onClick={() => onNavigate(navigate.PREVIOUS)}
@@ -51,13 +53,15 @@ export default function CustomToolbar({
         >
           {messages.previous}
         </button>
-        <button
+
+        {!isMisReservasView && <button
           type="button"
           onClick={() => onNavigate(navigate.TODAY)}
           aria-label={messages.today}
         >
           <strong>{messages.today}</strong>
-        </button>
+        </button>}
+
         <button
           type="button"
           onClick={() => onNavigate(navigate.NEXT)}
