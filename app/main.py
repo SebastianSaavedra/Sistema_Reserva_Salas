@@ -150,17 +150,24 @@ async def get_reservas(request: Request, oficina_id: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
-# Operación para obtener todas las reservas de una sala por el ID de la sala
-@app.get("/{oficina_id}/reservas/{sala_id}/todas", response_model=List[Reserva])
-async def get_reservas_by_room_id(sala_id: str, request: Request):
+# Operación para obtener todas las reservas de un usuario por su nombre
+@app.get("/mis_reservas/{oficina_id}", response_class=JSONResponse)
+async def get_reservas_by_user(request: Request, oficina_id: str):
     try:
-        reservas = await request.app.mongodb_client[request.cookies.get("oficina_id")]["reservas"].find({"sala_id": sala_id}).to_list(None)
-        if reservas:
-            return [Reserva(**reserva, oid=str(reserva["_id"])) for reserva in reservas]
-        raise HTTPException(status_code=404, detail="No se encontraron reservas para este usuario")
+        ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+        mis_reservas = await request.app.mongodb_client[oficina_id]["reservas"].find({"nombre_reservante": "Seba"}).to_list(None)
+        ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+        
+        for reserva in mis_reservas:
+            reserva["_id"] = str(reserva["_id"])
+            # Convertir datetime a string en formato ISO 8601
+            reserva["fecha_inicio"] = reserva["fecha_inicio"].isoformat()
+            reserva["fecha_fin"] = reserva["fecha_fin"].isoformat()
 
+        return JSONResponse(status_code=200, content=mis_reservas)
+    
     except Exception as e:
-        print(f"Error al obtener reservas: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
