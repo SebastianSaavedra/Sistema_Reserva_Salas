@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
+import { Calendar, momentLocalizer, Views  } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import moment from 'moment';
 import 'moment/locale/es';
@@ -8,7 +8,7 @@ import ApiCaller from '../Api';
 import EventDetailsModal from './EventDetailsModal';
 import ModalReserva from './ModalReserva';
 import { getOfficeId } from '../slices/oficinaSlice';
-import AgendaView from '../views/CustomAgendaView';
+import MisReservasView from '../views/MisReservasView';
 import CustomToolbar from './CustomToolbar';
 
 const localizer = momentLocalizer(moment);
@@ -22,6 +22,7 @@ const Calendario = () => {
   const [showModal, setShowModal] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [llamadoAPI, setLlamadoAPI] = useState(0);
+  const [customView_ReservaSelected, setMisReservas] = useState();
   const officeId = useSelector(getOfficeId);
   const calendarRef = useRef(null);
 
@@ -30,7 +31,6 @@ const Calendario = () => {
       try {
         const salasResponse = await api.getSalas();
         const numerosSalas = salasResponse.data.map(sala => ({ numero: sala.numero, id: sala._id }));
-        console.log(salasResponse);
         setSalas(numerosSalas);
       } catch (error) {
         console.error('Error al solicitar las salas al backend:', error);
@@ -53,6 +53,7 @@ const Calendario = () => {
     }
   }, [officeId, llamadoAPI]);
   
+  // Dar click en un día del calendario y que guarde la fecha del día que se dio click.
   useEffect(() => {
     const ref = calendarRef.current;
     const listenSlotClick = (event) => {
@@ -78,6 +79,16 @@ const Calendario = () => {
     setShowModal(true);
     }
   }, [isModifying]);
+
+  useEffect(() => {
+    if (customView_ReservaSelected) {
+      console.log(customView_ReservaSelected);
+    }
+  }, [customView_ReservaSelected]);
+
+  const handleReservationClick = (reserva) => {
+    setMisReservas(reserva);
+  };
 
   const onSelectSlot = (data) => {
     console.log("onSelectSlot: " + selectedDate);
@@ -144,7 +155,7 @@ const Calendario = () => {
     sala_id: reserva.sala_id,
     reserva_id: reserva._id
   }));
-
+  
   return (
     <div ref={calendarRef}>
       <Calendar
@@ -156,7 +167,7 @@ const Calendario = () => {
         views={{
           month: true,
           week: true,
-          misReservas: AgendaView 
+          misReservas: MisReservasView 
         }}
         messages={{ previous: "<", today: ".", next: ">", month: "Mes", week: "Semana", misReservas: "Mis Reservas" }}
         localizer={localizer}
@@ -164,7 +175,8 @@ const Calendario = () => {
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
         style={{ height: 750 }}
-        events={eventos}
+        ///////////////////////
+        onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView
       />
 
       {showModal ? (
@@ -187,12 +199,4 @@ const Calendario = () => {
     </div>
   );
 };
-
-//#region CustomAgendaView
-
-
-
-//#endregion
-
-
 export default Calendario;

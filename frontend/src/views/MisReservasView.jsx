@@ -5,7 +5,9 @@ import ApiCaller from '../Api';
 import moment from 'moment';
 import { getOfficeId } from '../slices/oficinaSlice';
 
-const AgendaView = () => {
+let toolbarAction = '';
+
+const MisReservasView = ({ onReservationClick }) => {
   const api = ApiCaller();
   const officeId = useSelector(getOfficeId);
   const [reservas, setReservas] = useState([]);
@@ -26,20 +28,28 @@ const AgendaView = () => {
   }, [officeId]);
 
   useEffect(() => {
-    setTotalPages(Math.ceil(reservas.length / entriesPerPage));
-  }, [reservas]);
+    if(reservas && reservas.data) {
+      setTotalPages(Math.ceil(reservas.data.length / entriesPerPage));
+    }
+    setCurrentPage(1);
+  }, [entriesPerPage,reservas]);
 
-  const handleNavigation = (action) => {
-    if (action === 'PREV' && currentPage > 1) {
+  useEffect(() => {
+    if (toolbarAction === 'PREV' && currentPage > 1) {
       setCurrentPage(currentPage - 1);
-    } else if (action === 'NEXT' && currentPage < totalPages) {
+    } else if (toolbarAction === 'NEXT' && currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
-  };
+    toolbarAction = '';
+  }, [toolbarAction]);
 
   const renderReservas = () => {
     if (reservas.length === 0) {
       return <div>No tienes reservas hechas.</div>;
+    }
+
+    const verReservaOnClick = (reserva) => {
+      onReservationClick(reserva);
     }
 
     // Calcular índices de elementos a mostrar
@@ -64,7 +74,7 @@ const AgendaView = () => {
             <span style={{ margin: '0 10px' }}>Página {currentPage} de {totalPages}</span>
           </div>
         </div>
-        <Table striped bordered hover style={{ margin: "auto 10px", padding: "20px" }}>
+        <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
           <thead>
             <tr>
               <th style={{ textAlign: "center" }}>#</th>
@@ -79,7 +89,7 @@ const AgendaView = () => {
                 <td width="1%" style={{ textAlign: "center" }}>{index + 1 + indexOfFirstEntry}</td>
                 <td width="40%">{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY [Horario:] h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}</td>
                 <td width="2.5%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
-                <td width="5%" style={{ textAlign: "center" }}><Button variant="primary">Ver reserva</Button></td>
+                <td width="5%" style={{ textAlign: "center" }}><Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button></td>
               </tr>
             ))}
           </tbody>
@@ -95,13 +105,11 @@ const AgendaView = () => {
   );
 };
 
-AgendaView.navigate = (date, action, { localizer }) => {
-  AgendaView.handleNavigation(action);
-  // return null;
+MisReservasView.navigate = (date, action) => {
+  toolbarAction = action;
 };
 
-AgendaView.title = (date, { localizer }) => {
+MisReservasView.title = (date, { localizer }) => {
   return null;
 };
-
-export default AgendaView;
+export default MisReservasView;
