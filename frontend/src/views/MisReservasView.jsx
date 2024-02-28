@@ -79,6 +79,7 @@ const MisReservasView = ({ onReservationClick }) => {
             <tr>
               <th style={{ textAlign: "center" }}>#</th>
               <th style={{ textAlign: "left" }}>Fecha</th>
+              <th style={{ textAlign: "left" }}>Hora</th>
               <th style={{ textAlign: "center" }}>Sala</th>
               <th style={{ textAlign: "center" }}>Acción</th>
             </tr>
@@ -86,10 +87,11 @@ const MisReservasView = ({ onReservationClick }) => {
           <tbody>
             {currentEntries.map((reserva, index) => (
               <tr key={reserva.id}>
-                <td width="1%" style={{ textAlign: "center" }}>{index + 1 + indexOfFirstEntry}</td>
-                <td width="40%">{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY [Horario:] h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}</td>
-                <td width="2.5%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
-                <td width="5%" style={{ textAlign: "center" }}><Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button></td>
+                <td  width="3%" style={{ textAlign: "center" }}>{index + 1 + indexOfFirstEntry}</td>
+                <td >{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                <td >{moment(reserva.fecha_inicio).format('[Horario:] h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}</td>
+                <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
+                <td width="10%" style={{ textAlign: "center" }}><Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button></td>
               </tr>
             ))}
           </tbody>

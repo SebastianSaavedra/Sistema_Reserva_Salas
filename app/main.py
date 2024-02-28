@@ -31,7 +31,7 @@ class Reserva(BaseModel):
 
 async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Request):
     try:
-        print(f"FUNCION verificar_disponibilidad - reserva: {reserva.fecha_inicio}")
+        # print(f"FUNCION verificar_disponibilidad - reserva: {reserva.fecha_inicio}")
         horarios_disponibles = await obtener_horarios_disponibles(
             fecha=reserva.fecha_inicio,
             sala_id=reserva.sala_id,
@@ -39,18 +39,18 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
             request=request,
             reserva_id=request.path_params['reserva_id'] if request.method == 'PUT' else None
         )
-        print(f"FUNCION verificar_disponibilidad - horarios_disponibles: {horarios_disponibles}")
+        # print(f"FUNCION verificar_disponibilidad - horarios_disponibles: {horarios_disponibles}")
 
         reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
             "sala_id": reserva.sala_id,
             "fecha_inicio": {"$gte": reserva.fecha_inicio.replace(hour=0, minute=0, second=0),
                              "$lt": reserva.fecha_inicio.replace(hour=23, minute=59, second=59)}
         }).to_list(None)
-        print(f"FUNCION verificar_disponibilidad - reservas: {reservas_dia}")
+        # print(f"FUNCION verificar_disponibilidad - reservas: {reservas_dia}")
 
-        print("REQUEST PARAMS: ")
-        print(request.path_params)
-        print(f"reserva: {reserva}")
+        # print("REQUEST PARAMS: ")
+        # print(request.path_params)
+        # print(f"reserva: {reserva}")
         if request.method == "PUT":
             if len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante: return True
             for r in reservas_dia:
@@ -63,7 +63,7 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La sala no está disponible para el intervalo de tiempo seleccionado."
             )
-        print(f"Paso el primer if de los horarios disponibles")
+        # print(f"Paso el primer if de los horarios disponibles")
 
         # Check for overlap with existing reservations
         for r in reservas_dia:
@@ -111,7 +111,7 @@ def obtener_fechas_periodicas(fecha_inicio, dia_semana, semana_mes, cantidad):
 
         fechas = [fecha_inicio]
         fecha_fin = fecha_inicio + relativedelta(months=cantidad)
-        fechas += list(rrule(MONTHLY, count=cantidad - 1, byweekday=dia_semana_map[dia_semana](semana_mes), dtstart=fecha_inicio, until=fecha_fin))
+        fechas = list(rrule(MONTHLY, count=cantidad, byweekday=dia_semana_map[dia_semana](semana_mes), dtstart=fecha_inicio, until=fecha_fin))
         return fechas
     except Exception as e:
         raise ValueError("Error al calcular las fechas de reserva periódica:", e)
@@ -238,17 +238,22 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             )
         dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
         dia_semana_reserva = reserva.fecha_inicio.weekday()
-
         calendario_inicio = calendar.monthcalendar(reserva.fecha_inicio.year, reserva.fecha_inicio.month)
         semana_inicio = next((i for i, semana in enumerate(calendario_inicio) if reserva.fecha_inicio.day in semana), None)
         fechas_reserva = obtener_fechas_periodicas(reserva.fecha_inicio, dias_semana[dia_semana_reserva], semana_inicio, reserva.periodic_Months)
 
+        # print(f"dia_semana_reserva {dia_semana_reserva}")
+        # print(f"calendario_inicio {calendario_inicio}")
+        # print(f"semana_inicio {semana_inicio}")
+        # print(f"fechas_reserva {fechas_reserva}")
+        # print(f"fechas_reserva {len(fechas_reserva) }")
         reservas_creadas = []
         for fecha in fechas_reserva:
             nueva_reserva_dict = reserva.model_dump().copy()
             nueva_reserva_dict['fecha_inicio'] = nueva_reserva_dict['fecha_inicio'].replace(year=fecha.year, month=fecha.month, day=fecha.day)
             nueva_reserva_dict['fecha_fin'] = nueva_reserva_dict['fecha_fin'].replace(year=fecha.year, month=fecha.month, day=fecha.day)
 
+            print(f"fecha {fecha}")
             # Verificar disponibilidad para cada reserva periódica
             if not await verificar_disponibilidad(Reserva(**nueva_reserva_dict), oficina_id, request):
                 raise HTTPException(
@@ -257,6 +262,7 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
                 )
             reservas_creadas.append(nueva_reserva_dict)
 
+        print(f"reservas_creadas {reservas_creadas  }")
         async with await request.app.mongodb_client.start_session() as session:
             try:
                 for reserva_periodica in reservas_creadas:

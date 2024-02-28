@@ -13,7 +13,7 @@ const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
     console.log("Delete Reservation");
     try
     {
-      const result = await api.deleteReservation(formatedEvent.reserva_id);
+      const result = await api.deleteReservation(formatedEvent.reserva_id || formatedEvent._id);
       onClose(result.status, result.statusText);
     }
     catch (error){
@@ -24,7 +24,7 @@ const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
   const formattedEndDate = moment(formatedEvent.fecha_fin).format('dddd, D [de] MMMM [de] YYYY - [Hora:] h:mm A');
 
   return (
-    <Modal show={!!formatedEvent} onHide={onClose}>
+    <Modal centered show={!!formatedEvent} onHide={onClose}>
       <Modal.Header closeButton>
         <Modal.Title>Datos Reserva</Modal.Title>
       </Modal.Header>

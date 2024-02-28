@@ -23,6 +23,7 @@ const ModalReserva = ({
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState();
   const [isPeriodic, setIsPeriodic] = useState(false);
+  const [periodicType, setPeriodicType] = useState();
   const [periodicMonths, setPeriodicMonths] = useState(2);
   const [newDate, setNewDate] = useState(selectedDate);
   
@@ -194,17 +195,8 @@ const ModalReserva = ({
   };
   const horariosFinLimitados = limitarHorariosFin();
 
-  const handleTogglePeriodic = () => {
-    setIsPeriodic(!isPeriodic);
-  };
-
-  const handleSelectMonths = (months) => {
-    setPeriodicMonths(months);
-  };
-
-
   return (
-    <Modal show={show} onHide={handler.ResetModal}>
+    <Modal centered show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>
         <Modal.Title>{isModifying ? `Modificar Reserva ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}` : `Reservar ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}`}</Modal.Title>
       </Modal.Header>
@@ -244,8 +236,8 @@ const ModalReserva = ({
         <div style={{ marginBottom: '15px' }}>
           <h6>Selecciona un horario de inicio:</h6>
           <Dropdown>
-            <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio">
-              {horarioInicio ? horarioInicio : 'Seleccionar horario de inicio'}
+            <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio" disabled={!selectedSala}>
+              {horarioInicio ? horarioInicio : 'Horario de inicio'}
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {horariosDisponibles.map(horario => (
@@ -262,8 +254,8 @@ const ModalReserva = ({
         <div style={{ marginBottom: '15px' }}>
           <h6>Selecciona un horario de fin:</h6>
           <Dropdown>
-            <Dropdown.Toggle variant="primary" id="dropdown-horario-fin">
-              {horarioFin ? horarioFin : 'Seleccionar horario de fin'}
+            <Dropdown.Toggle variant="primary" id="dropdown-horario-fin" disabled={!selectedSala}>
+              {horarioFin ? horarioFin : 'Horario de fin'}
             </Dropdown.Toggle>
             <Dropdown.Menu>
             {Array.isArray(horariosDisponibles) && horariosFinLimitados.map(horario => (
@@ -283,31 +275,52 @@ const ModalReserva = ({
             <input
               type="checkbox"
               checked={isPeriodic}
-              onChange={handleTogglePeriodic}
+              onChange={() => setIsPeriodic(!isPeriodic)}
             />{' '}
             Sí
           </label>
         </div>}
         {isPeriodic && (
           <div style={{ marginBottom: '15px' }}>
-            <h6>Selecciona la cantidad de meses:</h6>
-            <Dropdown>
-              <Dropdown.Toggle variant="primary" id="dropdown-months">
-                {periodicMonths} meses
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((months) => (
-                  <Dropdown.Item
-                    key={months}
-                    onClick={() => handleSelectMonths(months)}
-                  >
-                    {months} meses
-                  </Dropdown.Item>
-                ))}
-              </Dropdown.Menu>
-            </Dropdown>
-          </div>
+          <h6>Tipo de periodicidad:</h6>
+          <Dropdown>
+            <Dropdown.Toggle variant="primary" id="dropdown-periodic">
+            {`${periodicType ? periodicType : 'Elige una periodicidad'}`}
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              {['Semanal','Mensual'].map((periodType) => (
+                <Dropdown.Item
+                  key={periodType.indexOf()}
+                  onClick={() => {
+                    setPeriodicType(periodType);
+
+                  }}
+                >
+                  {periodType}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>
         )}
+        {isPeriodic && <div style={{ marginBottom: '15px' }}>
+          <h6>Selecciona la cantidad de meses:</h6>
+          <Dropdown>
+            <Dropdown.Toggle variant="primary" id="dropdown-months" disabled={!periodicType}>
+              {periodicMonths} meses
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((months) => (
+                <Dropdown.Item
+                  key={months}
+                  onClick={() => setPeriodicMonths(months)}
+                >
+                  {months} meses
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={handler.ResetModal} disabled={isLoading}>
@@ -320,5 +333,4 @@ const ModalReserva = ({
     </Modal>
   );
 };
-
 export default ModalReserva;

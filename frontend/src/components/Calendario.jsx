@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { Calendar, momentLocalizer, Views  } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -25,6 +25,10 @@ const Calendario = () => {
   const [customView_ReservaSelected, setMisReservas] = useState();
   const officeId = useSelector(getOfficeId);
   const calendarRef = useRef(null);
+  const [view, setView] = useState(Views.MONTH);
+  const [date, setDate] = useState()
+  const onView = useCallback((newView) => setView(newView), [setView]);
+  const onNavigate = useCallback((newDate) => setDate(newDate), [setDate])
 
   useEffect(() => {
     const fetchSalas = async () => {
@@ -82,7 +86,11 @@ const Calendario = () => {
 
   useEffect(() => {
     if (customView_ReservaSelected) {
-      console.log(customView_ReservaSelected);
+      // console.log(customView_ReservaSelected);
+      onView(Views.MONTH);
+      onNavigate(customView_ReservaSelected.fecha_inicio);
+      const formatedData = formatReservationData(customView_ReservaSelected);
+      setSelectedEvent(formatedData);
     }
   }, [customView_ReservaSelected]);
 
@@ -136,14 +144,14 @@ const Calendario = () => {
   const formatReservationData = (reservationData) => {
     const formattedStartDate = moment(reservationData.fecha_inicio || reservationData.start).format('YYYY-MM-DDTHH:mm:ss');
     const formattedEndDate = moment(reservationData.fecha_fin || reservationData.end).format('YYYY-MM-DDTHH:mm:ss');
-    console.log(reservationData);
+    // console.log(reservationData);
     return {
       nombre_reservante: reservationData.nombre_reservante || reservationData.title.split(' - ')[0],
       fecha_inicio: formattedStartDate,
       fecha_fin: formattedEndDate,
       sala_numero: reservationData.sala_numero,
       sala_id: reservationData.sala_id,
-      reserva_id: reservationData.reserva_id
+      reserva_id: reservationData.reserva_id || reservationData._id
     };
   };  
 
@@ -169,12 +177,17 @@ const Calendario = () => {
           week: true,
           misReservas: MisReservasView 
         }}
+        date={date}
+        onNavigate={onNavigate}
+        view={view}
+        onView={onView}
         messages={{ previous: "<", today: ".", next: ">", month: "Mes", week: "Semana", misReservas: "Mis Reservas" }}
         localizer={localizer}
         selectable={true}
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
         style={{ height: 750 }}
+        events={eventos}
         ///////////////////////
         onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView
       />
