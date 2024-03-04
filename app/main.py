@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from dateutil.rrule import rrule, MONTHLY, WEEKLY
 from dateutil.relativedelta import relativedelta
 from dateutil.rrule import MO, TU, WE, TH, FR, SA, SU
-from typing import List, Dict, Union, Optional
+from typing import Union, Optional
 # from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +28,7 @@ class Reserva(BaseModel):
     fecha_fin: datetime
     nombre_reservante: str
     periodic_Type: Optional[str] = None
-    periodic_Months: Optional[int] = None
+    periodic_Value: Optional[Union[int, datetime, str]] = None
 
 async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Request):
     try:
@@ -105,22 +105,23 @@ def parse_fecha(fecha):
         return datetime.strptime(fecha, "%Y-%m-%d")
     return fecha
 
-def obtener_fechas_periodicas(fecha_inicio, dia_semana, semana_mes, cantidad, tipo_periodicidad):
+def obtener_fechas_periodicas(fecha_inicio, dia_semana, semana_mes, valor_periodico, tipo_periodicidad):
     try:
         # Mapeo de los nombres de los días de la semana a sus códigos correspondientes
-        
         dia_semana_map = {'lunes': MO, 'martes': TU, 'miercoles': WE, 'jueves': TH, 'viernes': FR, 'sabado': SA, 'domingo': SU}
         frecuencias = {"Semanal": WEEKLY,"Mensual": MONTHLY}
+        
+        valor_periodico = valor_periodico.split("T")[0]
+        fecha_fin = datetime.strptime(valor_periodico, "%Y-%m-%d").date()
+        cantidad_meses = (relativedelta(fecha_fin,fecha_inicio.date()).months + 1)
         fechas = []
-        fecha_fin = fecha_inicio + relativedelta(months=cantidad)
-        print(f"fecha_fin {fecha_fin}")
         fechas = list(rrule(
             frecuencias[tipo_periodicidad],
-            count=cantidad,
             byweekday=dia_semana_map[dia_semana],
-            bysetpos=semana_mes,
-            dtstart=fecha_inicio,
-            until=fecha_fin,
+            dtstart=fecha_inicio.date(),
+            until=fecha_fin if tipo_periodicidad == "Semanal" else None,
+            bysetpos=semana_mes if tipo_periodicidad != "Semanal" else None, # El numero de la semana en la que se hara la reserva
+            count=cantidad_meses if tipo_periodicidad != "Semanal" else None,
         ))
         return fechas
     except Exception as e:
@@ -139,6 +140,7 @@ async def mostrar_lista_salas(request: Request, oficina_id: str):
         return salas_ordenadas
     except Exception as e:
         print(f"Error al obtener lista de salas: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -214,6 +216,7 @@ async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str
 
         return horarios_disponibles
     except Exception as e:
+        traceback.print_exc()
         return {f"Error al obtener horarios disponibles: {e}"} 
 
 # Operación para hacer una reserva en la base de datos
@@ -228,7 +231,7 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
         )
     async with await request.app.mongodb_client.start_session() as session:
         try:
-            await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(exclude={'periodic_Type','periodic_Months'}), session=session)
+            await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(exclude={'periodic_Type','periodic_Value'}), session=session)
         except Exception as e:
             # Manejar errores de la transacción
             print(f"Error al hacer reserva: {e}")
@@ -239,7 +242,7 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
 @app.post("/reservar_periodica/{oficina_id}", response_class=JSONResponse)
 async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: Request):
     reserva = Reserva(**reserva_json)
-    print(reserva.fecha_inicio)
+    print(f"reserva.periodic_Value {reserva.periodic_Value}")
     try:
         if not await verificar_disponibilidad(reserva, oficina_id, request):
             raise HTTPException(
@@ -248,13 +251,13 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             )
         dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
         dia_semana_reserva = reserva.fecha_inicio.weekday()
-        print(f"dia_semana_reserva {dia_semana_reserva}")
+        # print(f"dia_semana_reserva {dia_semana_reserva}")
         calendario_inicio = calendar.monthcalendar(reserva.fecha_inicio.year, reserva.fecha_inicio.month)
-        print(f"calendario_inicio {calendario_inicio}")
-        semana_mes = next((i for i, semana in enumerate(calendario_inicio) if reserva.fecha_inicio.day in semana), None) + 1
-        # semana_mes = min(semana_mes, 4)
-        print(f"semana_inicio {semana_mes}")
-        fechas_reserva = obtener_fechas_periodicas(reserva.fecha_inicio, dias_semana[dia_semana_reserva], semana_mes, reserva.periodic_Months,'Mensual')
+        # print(f"calendario_inicio {calendario_inicio}")
+        semana_mes = next((i for i, semana in enumerate(calendario_inicio) if reserva.fecha_inicio.day in semana), None)
+        if semana_mes == 0: semana_mes += 1
+        # print(f"semana_mes {semana_mes}")
+        fechas_reserva = obtener_fechas_periodicas(reserva.fecha_inicio, dias_semana[dia_semana_reserva], semana_mes, reserva.periodic_Value,reserva.periodic_Type)
 
         print(f"fechas_reserva {fechas_reserva}")
         print(f"fechas_reserva.length {len(fechas_reserva) }")
@@ -274,19 +277,20 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             reservas_creadas.append(nueva_reserva_dict)
 
         print(f"reservas_creadas {reservas_creadas  }")
-        # async with await request.app.mongodb_client.start_session() as session:
-        #     try:
-        #         for reserva_periodica in reservas_creadas:
-        #             await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva_periodica, session=session)
-        #     except Exception as e:
-        #         # Manejar errores de la transacción
-        #         print(f"Error al hacer reserva: {e}")
-        #         raise HTTPException(status_code=500, detail="Error interno del servidor")
+        async with await request.app.mongodb_client.start_session() as session:
+            try:
+                for reserva_periodica in reservas_creadas:
+                    await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva_periodica, session=session)
+            except Exception as e:
+                # Manejar errores de la transacción
+                print(f"Error al hacer reserva: {e}")
+                raise HTTPException(status_code=500, detail="Error interno del servidor")
 
         return JSONResponse(status_code=200, content={"message": "Reservas realizadas exitosamente"})
 
     except Exception as e:
         print(f"Error al hacer reserva: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -329,6 +333,7 @@ async def delete_reserva(oficina_id: str, reserva_id: str, request: Request):
         await request.app.mongodb_client[oficina_id]["reservas"].find_one_and_delete({"_id": ObjectId(reserva_id)})
     except Exception as e:
         print(f"Error al eliminar sala: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=404, detail="Sala no encontrada")
 
 
