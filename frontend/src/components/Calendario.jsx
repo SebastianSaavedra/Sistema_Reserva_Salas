@@ -144,16 +144,24 @@ const Calendario = () => {
   const formatReservationData = (reservationData) => {
     const formattedStartDate = moment(reservationData.fecha_inicio || reservationData.start).format('YYYY-MM-DDTHH:mm:ss');
     const formattedEndDate = moment(reservationData.fecha_fin || reservationData.end).format('YYYY-MM-DDTHH:mm:ss');
-    // console.log(reservationData);
+    let formattedPeriodicDate = ''
+    if (reservationData.periodicValue)
+    {
+      formattedPeriodicDate = moment(reservationData.periodicValue).format('DD-MM-YYYY');
+    }
+    console.log(reservationData);
+
     return {
       nombre_reservante: reservationData.nombre_reservante || reservationData.title.split(' - ')[0],
       fecha_inicio: formattedStartDate,
       fecha_fin: formattedEndDate,
       sala_numero: reservationData.sala_numero,
       sala_id: reservationData.sala_id,
-      reserva_id: reservationData.reserva_id || reservationData._id
+      reserva_id: reservationData.reserva_id || reservationData._id,
+      periodicType: reservationData.periodicType || '',
+      periodicValue: formattedPeriodicDate
     };
-  };  
+  };
 
   const eventos = reservas.map(reserva => ({
     title: `${reserva.nombre_reservante} - Sala: ${reserva.sala_numero}`,
@@ -161,7 +169,9 @@ const Calendario = () => {
     end: new Date(reserva.fecha_fin),
     sala_numero: reserva.sala_numero,
     sala_id: reserva.sala_id,
-    reserva_id: reserva._id
+    reserva_id: reserva._id,
+    periodicType: reserva.periodic_Type,
+    periodicValue: reserva.periodic_Value
   }));
   
   return (

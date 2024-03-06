@@ -114,8 +114,8 @@ const ModalReserva = ({
     },
     
     submitPeriodicReservation: async () => {
-      console.log(periodicValue);
-      console.log(newDate);
+      // console.log(periodicValue);
+      // console.log(newDate);
         try {
         const reservation = createReservationDict();
         setIsLoading(true);
@@ -226,7 +226,7 @@ const ModalReserva = ({
     setHorarioFin(horariosDisponibles[2]);
     setIsPeriodic(true);
     setPeriodicType('Mensual');
-    setPeriodicValue(2);
+    setPeriodicValue(selectedDate);
   };
 
   return (

@@ -8,7 +8,6 @@ const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
   if (!formatedEvent) return null; // Ocultar modal si no hay evento seleccionado
   const api = ApiCaller();
 
-
   const deleteReservation = async () => {
     console.log("Delete Reservation");
     try
@@ -22,20 +21,31 @@ const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
   };
   const formattedStartDate = moment(formatedEvent.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY - [Hora:] h:mm A');
   const formattedEndDate = moment(formatedEvent.fecha_fin).format('dddd, D [de] MMMM [de] YYYY - [Hora:] h:mm A');
+  let formattedPeriodicDate = '';
+  if (formatedEvent.periodicValue){ 
+      formattedPeriodicDate = moment(formatedEvent.periodicValue,'DD-MM-YYYY').format('dddd, D [de] MMMM [de] YYYY');
+  }
 
   return (
     <Modal centered show={!!formatedEvent} onHide={onClose}>
       <Modal.Header closeButton>
         <Modal.Title>Datos Reserva</Modal.Title>
       </Modal.Header>
-      <Modal.Body>
-        <p><strong>Nombre reservante:</strong> {formatedEvent.nombre_reservante}</p>
-        <p><strong>Numero sala:</strong> {formatedEvent.sala_numero}</p>
-        <p><strong>Horario de inicio:</strong> {formattedStartDate}</p>
-        <p><strong>Horario de fin:</strong> {formattedEndDate}</p>
-        {/* <p><strong>sala_id:</strong> {formatedEvent.sala_id}</p>
-        <p><strong>reserva_id:</strong> {formatedEvent.reserva_id}</p> */}
-      </Modal.Body>
+        <Modal.Body>
+          <div>
+            <p><strong>Nombre reservante:</strong> {formatedEvent.nombre_reservante}</p>
+            <p><strong>Numero sala:</strong> {formatedEvent.sala_numero}</p>
+            <p><strong>Horario de inicio:</strong> {formattedStartDate}</p>
+            <p><strong>Horario de fin:</strong> {formattedEndDate}</p>
+
+            {formatedEvent.periodicType ? (
+              <>
+                <p><strong>Periodicidad:</strong> {formatedEvent.periodicType}</p>
+                <p><strong>Fecha de fin de periodicidad:</strong> {formattedPeriodicDate}</p>
+              </>
+            ) : null}
+          </div>
+        </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onClose}>
           Cerrar
