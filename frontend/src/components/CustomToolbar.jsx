@@ -78,7 +78,7 @@ export default function CustomToolbar({
             <Dropdown.Menu>
               {oficinas && oficinas.map(office => (
                 <Dropdown.Item
-                  key={office.id}
+                  key={oficinas.indexOf(office)}
                   onClick={() => saveOffice_ReduxState(office)}
                 >
                   {office.nombre}

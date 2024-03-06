@@ -28,7 +28,7 @@ class Reserva(BaseModel):
     fecha_fin: datetime
     nombre_reservante: str
     periodic_Type: Optional[str] = None
-    periodic_Value: Optional[Union[int, datetime, str]] = None
+    periodic_Value: Optional[str] = None
 
 async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Request):
     try:
@@ -157,6 +157,11 @@ async def get_reservas(request: Request, oficina_id: str):
             reserva["fecha_inicio"] = reserva["fecha_inicio"].isoformat()
             reserva["fecha_fin"] = reserva["fecha_fin"].isoformat()
 
+            # Esta linea debe ser borrada xd 
+            periodic_value = reserva.get("periodic_Value")
+            if periodic_value and not isinstance(periodic_value, str):
+                reserva["periodic_Value"] = periodic_value.isoformat()
+
         return JSONResponse(content=reservas_from_db)
     except Exception as e:
         traceback.print_exc()
@@ -175,7 +180,8 @@ async def get_reservas_by_user(request: Request, oficina_id: str):
             # Convertir datetime a string en formato ISO 8601
             reserva["fecha_inicio"] = reserva["fecha_inicio"].isoformat()
             reserva["fecha_fin"] = reserva["fecha_fin"].isoformat()
-
+        
+        print(mis_reservas)
         return JSONResponse(status_code=200, content=mis_reservas)
     
     except Exception as e:
@@ -242,7 +248,6 @@ async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
 @app.post("/reservar_periodica/{oficina_id}", response_class=JSONResponse)
 async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: Request):
     reserva = Reserva(**reserva_json)
-    print(f"reserva.periodic_Value {reserva.periodic_Value}")
     try:
         if not await verificar_disponibilidad(reserva, oficina_id, request):
             raise HTTPException(
@@ -251,12 +256,21 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             )
         dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
         dia_semana_reserva = reserva.fecha_inicio.weekday()
-        # print(f"dia_semana_reserva {dia_semana_reserva}")
-        calendario_inicio = calendar.monthcalendar(reserva.fecha_inicio.year, reserva.fecha_inicio.month)
-        # print(f"calendario_inicio {calendario_inicio}")
-        semana_mes = next((i for i, semana in enumerate(calendario_inicio) if reserva.fecha_inicio.day in semana), None)
-        if semana_mes == 0: semana_mes += 1
-        # print(f"semana_mes {semana_mes}")
+        
+        fecha_inicio = reserva.fecha_inicio
+        dia_de_la_semana = fecha_inicio.isoweekday()
+        # print(f"dia_de_la_semana {dia_de_la_semana}")
+        dia_del_mes = fecha_inicio.day
+        # print(f"dia_del_mes {dia_del_mes}")
+        primera_semana = calendar.monthcalendar(fecha_inicio.year, fecha_inicio.month)[0]
+        # print(f"primera_semana {primera_semana}")
+        primera_fecha_de_la_semana = primera_semana[dia_de_la_semana - 1]
+        # print(f"primera_fecha_de_la_semana {primera_fecha_de_la_semana}")
+
+        semana_mes = 0
+        if dia_del_mes >= primera_fecha_de_la_semana:
+            semana_mes = (dia_del_mes - primera_fecha_de_la_semana) // 7 + 1
+        print(f"semana_mes {semana_mes}")
         fechas_reserva = obtener_fechas_periodicas(reserva.fecha_inicio, dias_semana[dia_semana_reserva], semana_mes, reserva.periodic_Value,reserva.periodic_Type)
 
         print(f"fechas_reserva {fechas_reserva}")
@@ -266,6 +280,8 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             nueva_reserva_dict = reserva.model_dump().copy()
             nueva_reserva_dict['fecha_inicio'] = nueva_reserva_dict['fecha_inicio'].replace(year=fecha.year, month=fecha.month, day=fecha.day)
             nueva_reserva_dict['fecha_fin'] = nueva_reserva_dict['fecha_fin'].replace(year=fecha.year, month=fecha.month, day=fecha.day)
+            nueva_reserva_dict['periodic_Value'] = fechas_reserva[-1].isoformat()
+            print(nueva_reserva_dict)
 
             print(f"fecha {fecha}")
             # Verificar disponibilidad para cada reserva periódica
@@ -276,7 +292,7 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
                 )
             reservas_creadas.append(nueva_reserva_dict)
 
-        print(f"reservas_creadas {reservas_creadas  }")
+        print(f"reservas_creadas {reservas_creadas}")
         async with await request.app.mongodb_client.start_session() as session:
             try:
                 for reserva_periodica in reservas_creadas:
