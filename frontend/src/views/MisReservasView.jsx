@@ -72,29 +72,24 @@ const MisReservasView = ({ onReservationClick }) => {
     const groups = {};
     reservas.forEach((reserva) => {
       const currentValue = reserva.periodic_Value;
-      if (currentValue) {
+      const currentType = reserva.periodic_Type;
+      if (currentValue && currentType === 'Semanal') {
         groups[currentValue] = (groups[currentValue] || []).concat(reserva);
       }
+      else if (currentValue && currentType === 'Mensual')
+      {
+        groups[currentValue] = (groups[currentValue] || []).concat(reserva);        
+      }
+      console.log(reserva);
     });
-    return Object.entries(groups).map(([periodicValue, reservasGroup]) => ({ periodicValue, reservasGroup }));
-  }
-
-  const getReservationDetailsCell = (reserva) => {
-    return (
-      <>
-        <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
-        <td>{moment(reserva.fecha_inicio).format('[Horario:] h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}</td>
-        <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
-      </>
-    );
-  }
-  // console.log(reservas);
-  // console.log(`periodicasMensual:`);
-  // console.log(periodicasMensuales);
-  // console.log(`periodicasSemanal:`);
-  // console.log(periodicasSemanales);
-  // console.log(`noPeriodicas:`);
-  // console.log(noPeriodicas);
+  
+    return Object.entries(groups).map(([periodicValue, reservasGroup]) => ({
+      periodicValue,
+      periodic_type: reservas[0].periodic_Type,
+      reservasGroup
+    }));
+  };
+  
   return (
     <div>
       {reservas && reservas.length > 0 ? (
@@ -118,20 +113,22 @@ const MisReservasView = ({ onReservationClick }) => {
           <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
             <thead>
               <tr>
-                <th style={{ textAlign: "center" }}>#</th>
+                <th style={{ textAlign: "center" }}>Tipo de Reserva</th>
                 <th style={{ textAlign: "left" }}>Fecha</th>
-                <th style={{ textAlign: "left" }}>Hora</th>
+                <th style={{ textAlign: "left" }}>Horario</th>
                 <th style={{ textAlign: "center" }}>Sala</th>
                 <th style={{ textAlign: "center" }} >Acción</th>
               </tr>
             </thead>
             <tbody>
-              {groupReservasByPeriodicValue(reservas.filter(esPeriodica)).map((reservaGroup, index) => (
+              {groupReservasByPeriodicValue(periodicasMensuales).map((reservaGroup) => (
                 <tr key={reservaGroup.periodicValue}>
-                  <td width="3%" style={{ textAlign: "center" }}>
-                    {index + 1 + indexOfFirstEntry}
+                  <td style={{ textAlign: "center" }}>
+                    <strong>Periodica {reservaGroup.periodic_type}</strong>
                   </td>
-                  {getReservationDetailsCell(reservaGroup.reservasGroup[0])}
+                  <td><strong>Inicio periodico: </strong>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                  <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
+                  <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
                   <td width="10%" style={{ textAlign: "center" }}>
                     <Button variant="primary" onClick={() => setIsCollapsed(!isCollapsed)}>
                       Ver detalles ({reservaGroup.reservasGroup.length})
@@ -139,37 +136,98 @@ const MisReservasView = ({ onReservationClick }) => {
                   </td>
                 </tr>
               ))}
+              
               <tr>
                 <td colSpan={5}>
                     <Collapse in={!isCollapsed}>
-                        <table>
-                          <tbody>
-                            {reservas.map((reserva, index) => (
-                              <tr key={index}>
-                                <td width="3%" style={{ textAlign: "center" }}>
-                                  {index + 1 + indexOfFirstEntry}
-                                </td>
-                                <td colSpan={5}>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
-                                <td>
-                                  {moment(reserva.fecha_inicio).format('[Horario:] h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
-                                </td>
-                                <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
-                                <td width="10%" style={{ textAlign: "center" }}>
-                                  <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}> 
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: "center" }}>#</th>
+                            <th style={{ textAlign: "left" }}>Fecha</th>
+                            <th style={{ textAlign: "left" }}>Horario</th>
+                            <th style={{ textAlign: "center" }}>Sala</th>
+                            <th style={{ textAlign: "center" }} >Acción</th>
+                          </tr>
+                          </thead>
+                            <tbody>
+                              {periodicasMensuales.map((reserva, index) => (
+                                <tr key={index}>
+                                  <td width="3%" style={{ textAlign: "center" }}>
+                                    {index + 1 + indexOfFirstEntry}
+                                  </td>
+                                  <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                                  <td>
+                                    {moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
+                                  </td>
+                                  <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
+                                  <td width="10%" style={{ textAlign: "center" }}>
+                                    <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                        </Table>
+                      </Collapse>
+                    </td>
+              </tr>
+
+              {groupReservasByPeriodicValue(periodicasSemanales).map((reservaGroup) => (
+                <tr key={reservaGroup.periodicValue}>
+                  <td style={{ textAlign: "center" }}>
+                    <strong>Periodica {reservaGroup.periodic_type}</strong>
+                  </td>
+                  <td><strong>Inicio periodico: </strong>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                  <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
+                  <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
+                  <td width="10%" style={{ textAlign: "center" }}>
+                    <Button variant="primary" onClick={() => setIsCollapsed(!isCollapsed)}>
+                      Ver detalles ({reservaGroup.reservasGroup.length})
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              
+              <tr>
+                <td colSpan={5}>
+                    <Collapse in={!isCollapsed}>
+                      <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}> 
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: "center" }}>#</th>
+                            <th style={{ textAlign: "left" }}>Fecha</th>
+                            <th style={{ textAlign: "left" }}>Horario</th>
+                            <th style={{ textAlign: "center" }}>Sala</th>
+                            <th style={{ textAlign: "center" }} >Acción</th>
+                          </tr>
+                          </thead>
+                            <tbody>
+                              {periodicasSemanales.map((reserva, index) => (
+                                <tr key={index}>
+                                  <td width="3%" style={{ textAlign: "center" }}>
+                                    {index + 1 + indexOfFirstEntry}
+                                  </td>
+                                  <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                                  <td>
+                                    {moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
+                                  </td>
+                                  <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
+                                  <td width="10%" style={{ textAlign: "center" }}>
+                                    <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                        </Table>
                       </Collapse>
                     </td>
               </tr>
 
             {noPeriodicas && noPeriodicas.length > 0 && noPeriodicas.map((reserva, index) => (
               <tr key={index}>
-                <td width="3%" style={{ textAlign: "center" }}>{index + 1 + indexOfFirstEntry}</td>
+                <td width="10%" style={{ textAlign: "center" }}><strong>Única</strong></td>
                 <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
-                <td>{moment(reserva.fecha_inicio).format('[Horario:] h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}</td>
+                <td>{moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}</td> {/* format('[Horario:] h:mm A') */}
                 <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
                 <td width="10%" style={{ textAlign: "center" }}>
                   <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
