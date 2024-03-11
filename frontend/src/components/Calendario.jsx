@@ -200,6 +200,8 @@ const Calendario = () => {
         events={eventos}
         ///////////////////////
         onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView
+        onApiValue={llamadoAPI} // Este prop pertenece a MisReservasView
+        onApiAction={() => setLlamadoAPI(prev => prev + 1)} // Este prop pertenece a MisReservasView
       />
 
       {showModal ? (
