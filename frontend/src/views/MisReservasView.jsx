@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Table, Button, Dropdown, Accordion, Collapse } from 'react-bootstrap';
+import { Table, Button, Dropdown, Collapse } from 'react-bootstrap';
 import ApiCaller from '../Api';
 import moment from 'moment';
 import { getOfficeId } from '../slices/oficinaSlice';
 
 let toolbarAction = '';
-const MisReservasView = ({ onReservationClick }) => {
+const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   const api = ApiCaller();
   const officeId = useSelector(getOfficeId);
   const [reservas, setReservas] = useState([]);
@@ -16,7 +16,7 @@ const MisReservasView = ({ onReservationClick }) => {
   const [periodicasMensuales,setPeriodicasMensuales] = useState();
   const [periodicasSemanales,setPeriodicasSemanales] = useState();
   const [noPeriodicas,setNoPeriodicas] = useState();
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [expandedGroup, setExpandedGroup] = useState(null);
 
   useEffect(() => {
     const fetchReservas = async () => {
@@ -28,7 +28,7 @@ const MisReservasView = ({ onReservationClick }) => {
       }
     };
     fetchReservas();
-  }, [officeId]);
+  }, [officeId, onApiValue]);
 
   useEffect(() => {
     if(reservas && reservas.data) {
@@ -60,7 +60,6 @@ const MisReservasView = ({ onReservationClick }) => {
     onReservationClick(reserva);
   }
 
-  // Calcular índices de elementos a mostrar
   const indexOfLastEntry = currentPage * entriesPerPage;
   const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
 
@@ -89,6 +88,21 @@ const MisReservasView = ({ onReservationClick }) => {
       reservasGroup
     }));
   };
+
+  const expandedGroupBtn = (value) => {
+    if (expandedGroup === value) {
+      setExpandedGroup(null);
+    } else {
+      setExpandedGroup(value);
+    }
+  }
+
+  const deleteReservasEspecificas = async (reserva) => {
+    const response = await api.deleteMisReservas(reserva);
+    if (response.status === 200) {
+      onApiAction();
+    }
+  }
   
   return (
     <div>
@@ -120,8 +134,10 @@ const MisReservasView = ({ onReservationClick }) => {
                 <th style={{ textAlign: "center" }} >Acción</th>
               </tr>
             </thead>
+
             <tbody>
               {groupReservasByPeriodicValue(periodicasMensuales).map((reservaGroup) => (
+                <>
                 <tr key={reservaGroup.periodicValue}>
                   <td style={{ textAlign: "center" }}>
                     <strong>Periodica {reservaGroup.periodic_type}</strong>
@@ -130,98 +146,123 @@ const MisReservasView = ({ onReservationClick }) => {
                   <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
                   <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
                   <td width="10%" style={{ textAlign: "center" }}>
-                    <Button variant="primary" onClick={() => setIsCollapsed(!isCollapsed)}>
+                  <Button variant="primary" onClick={() => expandedGroupBtn(reservaGroup.periodicValue)}>
                       Ver detalles ({reservaGroup.reservasGroup.length})
                     </Button>
+                    <Collapse in={expandedGroup === reservaGroup.periodicValue}>
+                        <div>
+                          <td></td>
+                          <Button variant="danger" size='sm' onClick={() => deleteReservasEspecificas(reservaGroup)}>
+                            Eliminar reservas
+                          </Button>
+                        </div>
+                        </Collapse>
                   </td>
                 </tr>
+                
+                <tr>
+                  <td colSpan={5}>
+                      <Collapse in={expandedGroup === reservaGroup.periodicValue}>
+                        <div>
+                        <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}> 
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: "center" }}>#</th>
+                              <th style={{ textAlign: "left" }}>Fecha</th>
+                              <th style={{ textAlign: "left" }}>Horario</th>
+                              <th style={{ textAlign: "center" }}>Sala</th>
+                              <th style={{ textAlign: "center" }} >Acción</th>
+                            </tr>
+                            </thead>
+                              <tbody>
+                              {reservaGroup.reservasGroup.map((reserva, index) => (
+                                    <tr key={index}>
+                                      <td width="3%" style={{ textAlign: "center" }}>
+                                        {index + 1 + indexOfFirstEntry}
+                                      </td>
+                                      <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                                      <td>
+                                        {moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
+                                      </td>
+                                      <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
+                                      <td width="10%" style={{ textAlign: "center" }}>
+                                        <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                          </Table>
+                        </div>
+                        </Collapse>
+                      </td>
+                </tr>
+                </>
               ))}
-              
-              <tr>
-                <td colSpan={5}>
-                    <Collapse in={!isCollapsed}>
-                      <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}> 
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: "center" }}>#</th>
-                            <th style={{ textAlign: "left" }}>Fecha</th>
-                            <th style={{ textAlign: "left" }}>Horario</th>
-                            <th style={{ textAlign: "center" }}>Sala</th>
-                            <th style={{ textAlign: "center" }} >Acción</th>
-                          </tr>
-                          </thead>
-                            <tbody>
-                              {periodicasMensuales.map((reserva, index) => (
-                                <tr key={index}>
-                                  <td width="3%" style={{ textAlign: "center" }}>
-                                    {index + 1 + indexOfFirstEntry}
-                                  </td>
-                                  <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
-                                  <td>
-                                    {moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
-                                  </td>
-                                  <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
-                                  <td width="10%" style={{ textAlign: "center" }}>
-                                    <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                        </Table>
-                      </Collapse>
-                    </td>
-              </tr>
 
               {groupReservasByPeriodicValue(periodicasSemanales).map((reservaGroup) => (
-                <tr key={reservaGroup.periodicValue}>
-                  <td style={{ textAlign: "center" }}>
-                    <strong>Periodica {reservaGroup.periodic_type}</strong>
-                  </td>
-                  <td><strong>Inicio periodico: </strong>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
-                  <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
-                  <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
-                  <td width="10%" style={{ textAlign: "center" }}>
-                    <Button variant="primary" onClick={() => setIsCollapsed(!isCollapsed)}>
-                      Ver detalles ({reservaGroup.reservasGroup.length})
-                    </Button>
-                  </td>
-                </tr>
+                <>
+                  <tr key={reservaGroup.periodicValue}>
+                    <td style={{ textAlign: "center" }}>
+                      <strong>Periodica {reservaGroup.periodic_type}</strong>
+                    </td>
+                    <td><strong>Inicio periodico: </strong>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                    <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
+                    <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
+                    <td width="10%" style={{ textAlign: "center" }}>
+                      <Button variant="primary" onClick={() => expandedGroupBtn(reservaGroup.periodicValue)}>
+                        Ver detalles ({reservaGroup.reservasGroup.length})
+                      </Button>
+                    <Collapse in={expandedGroup === reservaGroup.periodicValue}>
+                        <div>
+                          <td></td>
+                          <Button variant="danger" size='sm' onClick={() => deleteReservasEspecificas(reservaGroup)}>
+                            Eliminar reservas
+                          </Button>
+                        </div>
+                        </Collapse>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td colSpan={5}>
+                        <Collapse in={expandedGroup === reservaGroup.periodicValue}>
+                          <div>
+                          <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}> 
+                            <thead>
+                              <tr>
+                                <th style={{ textAlign: "center" }}>#</th>
+                                <th style={{ textAlign: "left" }}>Fecha</th>
+                                <th style={{ textAlign: "left" }}>Horario</th>
+                                <th style={{ textAlign: "center" }}>Sala</th>
+                                <th style={{ textAlign: "center" }} >Acción</th>
+                              </tr>
+                              </thead>
+                                <tbody>
+                                  {reservaGroup.reservasGroup.map((reserva, index) => (
+                                    <tr key={index}>
+                                      <td width="3%" style={{ textAlign: "center" }}>
+                                        {index + 1 + indexOfFirstEntry}
+                                      </td>
+                                      <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
+                                      <td>
+                                        {moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
+                                      </td>
+                                      <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
+                                      <td width="10%" style={{ textAlign: "center" }}>
+                                        <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                            </Table>
+                          </div>
+                          </Collapse>
+                        </td>
+                  </tr>
+                </>
               ))}
               
-              <tr>
-                <td colSpan={5}>
-                    <Collapse in={!isCollapsed}>
-                      <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}> 
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: "center" }}>#</th>
-                            <th style={{ textAlign: "left" }}>Fecha</th>
-                            <th style={{ textAlign: "left" }}>Horario</th>
-                            <th style={{ textAlign: "center" }}>Sala</th>
-                            <th style={{ textAlign: "center" }} >Acción</th>
-                          </tr>
-                          </thead>
-                            <tbody>
-                              {periodicasSemanales.map((reserva, index) => (
-                                <tr key={index}>
-                                  <td width="3%" style={{ textAlign: "center" }}>
-                                    {index + 1 + indexOfFirstEntry}
-                                  </td>
-                                  <td>{moment(reserva.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}</td>
-                                  <td>
-                                    {moment(reserva.fecha_inicio).format('h:mm A')} - {moment(reserva.fecha_fin).format('h:mm A')}
-                                  </td>
-                                  <td width="3%" style={{ textAlign: "center" }}>{reserva.sala_numero}</td>
-                                  <td width="10%" style={{ textAlign: "center" }}>
-                                    <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>Ver reserva</Button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                        </Table>
-                      </Collapse>
-                    </td>
-              </tr>
+              
 
             {noPeriodicas && noPeriodicas.length > 0 && noPeriodicas.map((reserva, index) => (
               <tr key={index}>

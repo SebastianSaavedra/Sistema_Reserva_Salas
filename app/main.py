@@ -351,6 +351,24 @@ async def delete_reserva(oficina_id: str, reserva_id: str, request: Request):
         print(f"Error al eliminar sala: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=404, detail="Sala no encontrada")
+    
+# Operación para eliminar las reservas periodicas especificas
+@app.delete("/eliminar_mis_reservas/{oficina_id}", response_class=JSONResponse)
+async def delete_my_reservas(request: Request, oficina_id: str, periodicType_filter: str, periodicValue_filter: str):
+    try:
+        ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+        await request.app.mongodb_client[oficina_id]["reservas"].delete_many({
+            "nombre_reservante" : "Seba",
+            "periodic_Type" : periodicType_filter,
+            "periodic_Value" : periodicValue_filter
+        })
+        ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
+        
+        return JSONResponse(status_code=200, content="Reservas eliminadas.")
+    
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 ###### MIDDLEWARES ###### Orden de ejecucion de arriba hacia abajo
