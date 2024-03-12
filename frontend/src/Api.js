@@ -39,8 +39,8 @@ const ApiCaller = () => {
       return axios.delete(`${url_web}/eliminar_reserva/${selectedOfficeId}?reserva_id=${reserva_id}`);
     },
 
-    deleteMisReservas: (reserva_data) => {
-      return axios.delete(`${url_web}/eliminar_mis_reservas/${selectedOfficeId}?periodicType_filter=${reserva_data.periodic_type}&periodicValue_filter=${reserva_data.periodicValue}`);
+    deleteMisReservas: (periodicType, periodicValue) => {
+      return axios.delete(`${url_web}/eliminar_mis_reservas/${selectedOfficeId}?periodicType_filter=${periodicType}&periodicValue_filter=${periodicValue}`);
     },
   
   };
