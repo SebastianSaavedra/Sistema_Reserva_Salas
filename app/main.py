@@ -363,8 +363,6 @@ async def delete_my_reservas(request: Request, oficina_id: str, periodicType_fil
             "periodic_Value" : periodicValue_filter
         })
         ###################### ESTO DEBE SER CAMBIADO EN UN FUTURO YA QUE EL NOMBRE DEL USUARIO SE VERA EN BASE A LA AUTENTICACION ######################
-        
-        return JSONResponse(status_code=200, content="Reservas eliminadas.")
     
     except Exception as e:
         traceback.print_exc()

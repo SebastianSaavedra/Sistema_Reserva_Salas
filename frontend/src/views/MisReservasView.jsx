@@ -70,16 +70,9 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   const groupReservasByPeriodicValue = (reservas) => {
     const groups = {};
     reservas.forEach((reserva) => {
-      const currentValue = reserva.periodic_Value;
-      const currentType = reserva.periodic_Type;
-      if (currentValue && currentType === 'Semanal') {
-        groups[currentValue] = (groups[currentValue] || []).concat(reserva);
-      }
-      else if (currentValue && currentType === 'Mensual')
-      {
-        groups[currentValue] = (groups[currentValue] || []).concat(reserva);        
-      }
-      console.log(reserva);
+      let currentValue = reserva.periodic_Value;
+      currentValue = `${currentValue}_(${reserva.sala_numero})`;
+      groups[currentValue] = (groups[currentValue] || []).concat(reserva);
     });
   
     return Object.entries(groups).map(([periodicValue, reservasGroup]) => ({
@@ -89,18 +82,25 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
     }));
   };
 
-  const expandedGroupBtn = (value) => {
-    if (expandedGroup === value) {
+  const handleVerDetallesClick = (reservaGroup) => {
+    groupReservasByPeriodicValue(periodicasSemanales);
+    if (expandedGroup === reservaGroup.periodicValue) {
       setExpandedGroup(null);
     } else {
-      setExpandedGroup(value);
+      setExpandedGroup(reservaGroup.periodicValue);
     }
   }
 
   const deleteReservasEspecificas = async (reserva) => {
-    const response = await api.deleteMisReservas(reserva);
-    if (response.status === 200) {
-      onApiAction();
+    try{      
+      const response = await api.deleteMisReservas(reserva.periodic_type,reserva.periodicValue.split('_')[0]);
+      console.log(response);
+      if (response.status === 200) {
+        onApiAction();
+      }
+    }
+    catch(error){
+      console.error('Error al eliminar la reserva:', error);
     }
   }
   
@@ -146,7 +146,7 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
                   <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
                   <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
                   <td width="10%" style={{ textAlign: "center" }}>
-                  <Button variant="primary" onClick={() => expandedGroupBtn(reservaGroup.periodicValue)}>
+                  <Button variant="primary" onClick={() => handleVerDetallesClick(reservaGroup)}>
                       Ver detalles ({reservaGroup.reservasGroup.length})
                     </Button>
                     <Collapse in={expandedGroup === reservaGroup.periodicValue}>
@@ -209,7 +209,7 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
                     <td>{moment(reservaGroup.reservasGroup[0].fecha_inicio).format('h:mm A')} - {moment(reservaGroup.reservasGroup[0].fecha_fin).format('h:mm A')}</td>
                     <td width="3%" style={{ textAlign: "center" }}>{reservaGroup.reservasGroup[0].sala_numero}</td>
                     <td width="10%" style={{ textAlign: "center" }}>
-                      <Button variant="primary" onClick={() => expandedGroupBtn(reservaGroup.periodicValue)}>
+                      <Button variant="primary" onClick={() => handleVerDetallesClick(reservaGroup)}>
                         Ver detalles ({reservaGroup.reservasGroup.length})
                       </Button>
                     <Collapse in={expandedGroup === reservaGroup.periodicValue}>
