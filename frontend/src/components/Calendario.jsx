@@ -57,14 +57,16 @@ const Calendario = () => {
     }
   }, [officeId, llamadoAPI]);
   
-  // Dar click en un día del calendario y que guarde la fecha del día que se dio click.
+  // Dar click en un día del calendario y que guarde la fecha del día que se dio click. Funciona en VIEW.MONTH
   useEffect(() => {
     const ref = calendarRef.current;
     const listenSlotClick = (event) => {
       const elements = document.elementsFromPoint(event.clientX, event.clientY);
       const dayElement = elements.find((element) =>
-        element.matches(".rbc-day-bg")
+        element.matches(".rbc-day-bg") || element.matches(".rbc-time-content")
       );
+      console.log(elements);
+      console.log(dayElement);
       if (dayElement) {
         const date = new Date(dayElement.getAttribute("data-date"));
         setSelectedDate(date);
