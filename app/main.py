@@ -15,7 +15,7 @@ from typing import Union, Optional
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
-  
+
 app = FastAPI()
 mongo_db_url = "mongodb://localhost:27017"
 app.mongodb_client = AsyncIOMotorClient(mongo_db_url)
