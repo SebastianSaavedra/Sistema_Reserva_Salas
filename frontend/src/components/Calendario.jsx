@@ -65,8 +65,8 @@ const Calendario = () => {
       const dayElement = elements.find((element) =>
         element.matches(".rbc-day-bg") || element.matches(".rbc-time-content")
       );
-      console.log(elements);
-      console.log(dayElement);
+      // console.log(elements);
+      // console.log(dayElement);
       if (dayElement) {
         const date = new Date(dayElement.getAttribute("data-date"));
         setSelectedDate(date);

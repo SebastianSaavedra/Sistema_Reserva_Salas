@@ -38,9 +38,11 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
       setTotalPages(Math.ceil(reservas.data.length / entriesPerPage));
     }
     setCurrentPage(1);
+    count = 0;
   }, [entriesPerPage,reservas]);
 
   useEffect(() => {
+    console.log(count);
     if (toolbarAction === 'PREV' && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     } else if (toolbarAction === 'NEXT' && currentPage < totalPages) {
@@ -107,8 +109,8 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
     }
   }
 
-const renderPeriodicReservationRow = (reservaGroup) => (
-  <tr key={reservaGroup.periodicValue}>
+const renderPeriodicReservationRow = (reservaGroup, index) => (
+  <tr key={index}>
     <td style={{ textAlign: "center" }}>
       <strong>Periodica {reservaGroup.periodic_type}</strong>
     </td>
@@ -199,7 +201,9 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
     </td>
   </tr>
 );
-  
+
+  const incrementCount = () => {count++};
+  let count = 0;
   return (
     <div>
       {reservas && reservas.length > 0 ? (
@@ -232,22 +236,39 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
             </thead>
 
             <tbody>
-              {groupReservasByPeriodicValue(periodicasMensuales).map((reservaGroup) => (
-                <>
-                  {renderPeriodicReservationRow(reservaGroup)}
-                  {renderPeriodicReservationDetails(reservaGroup)}
-                </>
-              ))}
-
-              {groupReservasByPeriodicValue(periodicasSemanales).map((reservaGroup) => (
-                <>
-                {renderPeriodicReservationRow(reservaGroup)}
-                {renderPeriodicReservationDetails(reservaGroup)}
+            {groupReservasByPeriodicValue(periodicasMensuales).map((reservaGroup, index) => (
+              <>
+                {count < entriesPerPage && (
+                  <>
+                    {renderPeriodicReservationRow(reservaGroup, index)}
+                    {renderPeriodicReservationDetails(reservaGroup)}
+                    {incrementCount()}
+                  </>
+                )}
               </>
-              ))}
+            ))}
+
+              {groupReservasByPeriodicValue(periodicasSemanales).map((reservaGroup, index) => (
+              <>
+                {count < entriesPerPage && (
+                  <>
+                    {renderPeriodicReservationRow(reservaGroup, index)}
+                    {renderPeriodicReservationDetails(reservaGroup)}
+                    {incrementCount()}
+                  </>
+                )}
+              </>
+            ))}
               
               {noPeriodicas && noPeriodicas.length > 0 && noPeriodicas.map((reserva, index) => (
-                renderNonPeriodicReservationRow(reserva,index)
+                <>
+                {count < entriesPerPage && (
+                  <>
+                    {renderNonPeriodicReservationRow(reserva, index)}
+                    {incrementCount()}
+                  </>
+                )}
+                </>
               ))}
             </tbody>
           </Table>
