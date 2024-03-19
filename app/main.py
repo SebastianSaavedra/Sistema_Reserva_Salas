@@ -256,25 +256,30 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             )
         dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
         dia_semana_reserva = reserva.fecha_inicio.weekday()
+        # print(f"dia_semana_reserva {dia_semana_reserva}")
+        # print(f"dias_semana[dia_semana_reserva] {dias_semana[dia_semana_reserva]}")
         
         fecha_inicio = reserva.fecha_inicio
-        dia_de_la_semana = fecha_inicio.isoweekday()
-        # print(f"dia_de_la_semana {dia_de_la_semana}")
         dia_del_mes = fecha_inicio.day
         # print(f"dia_del_mes {dia_del_mes}")
-        primera_semana = calendar.monthcalendar(fecha_inicio.year, fecha_inicio.month)[0]
-        # print(f"primera_semana {primera_semana}")
-        primera_fecha_de_la_semana = primera_semana[dia_de_la_semana - 1]
-        # print(f"primera_fecha_de_la_semana {primera_fecha_de_la_semana}")
+        numero_dias_mes = calendar.monthrange(fecha_inicio.year, fecha_inicio.month)[1]
+        # print(f"numero_dias_mes {numero_dias_mes}")
+
+        semanas = [[] for _ in range(numero_dias_mes // 7 + 1)]
+        for dia in range(1, numero_dias_mes + 1):
+            semana = (dia - 1) // 7
+            semanas[semana].append(dia)
+        # print(f"semanas {semanas}")
 
         semana_mes = 0
-        if dia_del_mes >= primera_fecha_de_la_semana:
-            semana_mes = (dia_del_mes - primera_fecha_de_la_semana) // 7 + 1
-        print(f"semana_mes {semana_mes}")
+        for semana, dias in enumerate(semanas):
+            if dia_del_mes in dias:
+                semana_mes = semana + 1
+        # print(f"semana_mes {semana_mes}")
         fechas_reserva = obtener_fechas_periodicas(reserva.fecha_inicio, dias_semana[dia_semana_reserva], semana_mes, reserva.periodic_Value,reserva.periodic_Type)
 
         print(f"fechas_reserva {fechas_reserva}")
-        print(f"fechas_reserva.length {len(fechas_reserva) }")
+        print(f"fechas_reserva.length {len(fechas_reserva)}")  
         reservas_creadas = []
         for fecha in fechas_reserva:
             nueva_reserva_dict = reserva.model_dump().copy()
@@ -300,6 +305,7 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             except Exception as e:
                 # Manejar errores de la transacción
                 print(f"Error al hacer reserva: {e}")
+                traceback.print_exc()
                 raise HTTPException(status_code=500, detail="Error interno del servidor")
 
         return JSONResponse(status_code=200, content={"message": "Reservas realizadas exitosamente"})
