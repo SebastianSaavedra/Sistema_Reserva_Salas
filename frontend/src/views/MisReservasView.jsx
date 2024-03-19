@@ -13,10 +13,9 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [periodicasMensuales,setPeriodicasMensuales] = useState();
-  const [periodicasSemanales,setPeriodicasSemanales] = useState();
-  const [noPeriodicas,setNoPeriodicas] = useState();
+  const [reservasFormateadas,setReservasFormateadas] = useState();
   const [expandedGroup, setExpandedGroup] = useState(null);
+  const [periodicTypeFilter, setPeriodicTypeFilter] = useState('');
 
   const formatDate = (date) => moment(date).format('dddd, D [de] MMMM [de] YYYY');
   const formatTime = (date) => moment(date).format('h:mm A');
@@ -34,15 +33,17 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   }, [officeId, onApiValue]);
 
   useEffect(() => {
-    if(reservas && reservas.data) {
-      setTotalPages(Math.ceil(reservas.data.length / entriesPerPage));
+    if (reservasFormateadas) {
+      const filteredReservations = reservasFormateadas.filter(reservaGroup => 
+        (periodicTypeFilter === '' || reservaGroup.periodic_type === periodicTypeFilter) || 
+        (periodicTypeFilter === 'Unica' && !reservaGroup.periodic_type)
+      );
+      setTotalPages(Math.ceil(filteredReservations.length / entriesPerPage));
     }
     setCurrentPage(1);
-    count = 0;
-  }, [entriesPerPage,reservas]);
+  }, [entriesPerPage, reservasFormateadas, periodicTypeFilter]);
 
   useEffect(() => {
-    console.log(count);
     if (toolbarAction === 'PREV' && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     } else if (toolbarAction === 'NEXT' && currentPage < totalPages) {
@@ -56,17 +57,12 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
     const periodicasSemanales = reservas.filter(reserva => esPeriodica(reserva) && reserva.periodic_Type === "Semanal");
     const noPeriodicas = reservas.filter(reserva => !esPeriodica(reserva));
   
-    setPeriodicasMensuales(periodicasMensuales);
-    setPeriodicasSemanales(periodicasSemanales);
-    setNoPeriodicas(noPeriodicas);
+    setReservasFormateadas([...groupReservasByPeriodicValue(periodicasMensuales),...groupReservasByPeriodicValue(periodicasSemanales),...noPeriodicas]);
   }, [reservas]);
 
   const verReservaOnClick = (reserva) => {
     onReservationClick(reserva);
   }
-
-  const indexOfLastEntry = currentPage * entriesPerPage;
-  const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
 
   const esPeriodica = (reserva) => {
     return reserva.periodic_Type && (reserva.periodic_Type === "Mensual" || reserva.periodic_Type === "Semanal");
@@ -88,7 +84,6 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   };
 
   const handleVerDetallesClick = (reservaGroup) => {
-    groupReservasByPeriodicValue(periodicasSemanales);
     if (expandedGroup === reservaGroup.periodicValue) {
       setExpandedGroup(null);
     } else {
@@ -202,13 +197,14 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
   </tr>
 );
 
-  const incrementCount = () => {count++};
-  let count = 0;
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
+
   return (
     <div>
       {reservas && reservas.length > 0 ? (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
             <Dropdown>
               <Dropdown.Toggle variant="" id="dropdown-basic">
                 Mostrar {entriesPerPage} por página
@@ -219,9 +215,18 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
                 <Dropdown.Item onClick={() => setEntriesPerPage(20)}>20</Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
-            <div>
-              <span style={{ margin: '0 10px' }}>Página {currentPage} de {totalPages}</span>
-            </div>
+            <Dropdown>
+              <Dropdown.Toggle variant="" id="dropdown-periodic-type">
+              Filtrar por tipo: {periodicTypeFilter === '' ? 'Todas' : periodicTypeFilter}
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                <Dropdown.Item onClick={() => setPeriodicTypeFilter('')}>Todas</Dropdown.Item>
+                <Dropdown.Item onClick={() => setPeriodicTypeFilter('Unica')}>Única</Dropdown.Item>
+                <Dropdown.Item onClick={() => setPeriodicTypeFilter('Mensual')}>Mensual</Dropdown.Item>
+                <Dropdown.Item onClick={() => setPeriodicTypeFilter('Semanal')}>Semanal</Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+            <span style={{ marginLeft: 'auto', padding: '0px 10px' }}>Página {currentPage} de {totalPages}</span>
           </div>
   
           <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
@@ -234,42 +239,23 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
                 <th style={{ textAlign: "center" }} >Acción</th>
               </tr>
             </thead>
-
             <tbody>
-            {groupReservasByPeriodicValue(periodicasMensuales).map((reservaGroup, index) => (
-              <>
-                {count < entriesPerPage && (
-                  <>
-                    {renderPeriodicReservationRow(reservaGroup, index)}
-                    {renderPeriodicReservationDetails(reservaGroup)}
-                    {incrementCount()}
-                  </>
-                )}
-              </>
-            ))}
-
-              {groupReservasByPeriodicValue(periodicasSemanales).map((reservaGroup, index) => (
-              <>
-                {count < entriesPerPage && (
-                  <>
-                    {renderPeriodicReservationRow(reservaGroup, index)}
-                    {renderPeriodicReservationDetails(reservaGroup)}
-                    {incrementCount()}
-                  </>
-                )}
-              </>
-            ))}
-              
-              {noPeriodicas && noPeriodicas.length > 0 && noPeriodicas.map((reserva, index) => (
+              {reservasFormateadas
+              .filter(reservaGroup => 
+                (periodicTypeFilter === '' || reservaGroup.periodic_type === periodicTypeFilter) || 
+                (periodicTypeFilter === 'Unica' && !reservaGroup.periodic_type)
+              )
+              .slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage)
+              .map((reservaGroup, index) => (
+                reservaGroup.periodic_type ?    // Si no posee un tipo periodico (Mensual o Semanal) entonces es una reserva no periodica
                 <>
-                {count < entriesPerPage && (
-                  <>
-                    {renderNonPeriodicReservationRow(reserva, index)}
-                    {incrementCount()}
-                  </>
-                )}
+                  {renderPeriodicReservationRow(reservaGroup, index)}
+                  {renderPeriodicReservationDetails(reservaGroup)}
                 </>
-              ))}
+            : <>
+              {renderNonPeriodicReservationRow(reservaGroup, index)}
+            </>
+             ))}
             </tbody>
           </Table>
         </>

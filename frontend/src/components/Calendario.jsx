@@ -186,14 +186,14 @@ const Calendario = () => {
         }}
         views={{
           month: true,
-          week: true,
-          misReservas: MisReservasView 
+          work_week: true,
+          misReservas: MisReservasView
         }}
         date={date}
         onNavigate={onNavigate}
         view={view}
         onView={onView}
-        messages={{ previous: "<", today: ".", next: ">", month: "Mes", week: "Semana", misReservas: "Mis Reservas" }}
+        messages={{ previous: "<", today: ".", next: ">", month: "Mes", work_week: "Semana", misReservas: "Mis Reservas" }}
         localizer={localizer}
         selectable={true}
         onSelectSlot={onSelectSlot}
