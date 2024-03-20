@@ -135,8 +135,8 @@ const renderPeriodicReservationRow = (reservaGroup, index) => (
 );
 
 const renderPeriodicReservationDetails = (reservaGroup) => (
-  <tr>
-    <td colSpan={5}>
+  <>
+  <td colSpan={5}>
       <Collapse in={expandedGroup === reservaGroup.periodicValue}>
         <div>
           <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
@@ -174,7 +174,7 @@ const renderPeriodicReservationDetails = (reservaGroup) => (
         </div>
       </Collapse>
     </td>
-  </tr>
+  </>
 );
 
 const renderNonPeriodicReservationRow = (reserva, index) => (
@@ -228,8 +228,8 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
             </Dropdown>
             <span style={{ marginLeft: 'auto', padding: '0px 10px' }}>Página {currentPage} de {totalPages}</span>
           </div>
-  
-          <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
+          
+          <Table striped bordered hover> {/* style={{ margin: "auto", padding: "20px" }} */}
             <thead>
               <tr>
                 <th style={{ textAlign: "center" }}>Tipo de Reserva</th>

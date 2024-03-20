@@ -57,28 +57,28 @@ const Calendario = () => {
     }
   }, [officeId, llamadoAPI]);
   
-  // Dar click en un día del calendario y que guarde la fecha del día que se dio click. Funciona en VIEW.MONTH
-  useEffect(() => {
-    const ref = calendarRef.current;
-    const listenSlotClick = (event) => {
-      const elements = document.elementsFromPoint(event.clientX, event.clientY);
-      const dayElement = elements.find((element) =>
-        element.matches(".rbc-day-bg") || element.matches(".rbc-time-content")
-      );
-      // console.log(elements);
-      // console.log(dayElement);
-      if (dayElement) {
-        const date = new Date(dayElement.getAttribute("data-date"));
-        setSelectedDate(date);
-      }
-    };
-    if (calendarRef && ref) {
-      ref.addEventListener("click", listenSlotClick);
-      return () => {
-        ref.removeEventListener("click", listenSlotClick);
-      };
-    }
-  }, []);
+  // // Dar click en un día del calendario y que guarde la fecha del día que se dio click.
+  // useEffect(() => {
+  //   const ref = calendarRef.current;
+  //   const listenSlotClick = (event) => {
+  //     const elements = document.elementsFromPoint(event.clientX, event.clientY);
+  //     const dayElement = elements.find((element) =>
+  //       element.matches(".rbc-day-bg") || element.matches(".rbc-time-view")
+  //     );
+  //     // console.log(elements);
+  //     // console.log(dayElement);
+  //     if (dayElement) {
+  //       const date = new Date(dayElement.getAttribute("data-date"));
+  //       setSelectedDate(date);
+  //     }
+  //   };
+  //   if (calendarRef && ref) {
+  //     ref.addEventListener("click", listenSlotClick);
+  //     return () => {
+  //       ref.removeEventListener("click", listenSlotClick);
+  //     };
+  //   }
+  // }, []);
 
   useEffect(() => {
     if (isModifying) {
@@ -101,7 +101,7 @@ const Calendario = () => {
   };
 
   const onSelectSlot = (data) => {
-    console.log("onSelectSlot: " + selectedDate);
+    setSelectedDate(data.start);
     setShowModal(true);
   };
 
@@ -112,7 +112,7 @@ const Calendario = () => {
   };
 
   const onReservationClose = (statusCode, statusText) => {
-    console.log("onReservationClose");
+    // console.log("onReservationClose");
     setShowModal(false);
     if (isModifying == true) setIsModifying(false);
 
@@ -176,6 +176,7 @@ const Calendario = () => {
     periodicValue: reserva.periodic_Value
   }));
   
+  const paddingValue = '15px';
   return (
     <div ref={calendarRef}>
       <Calendar
@@ -187,7 +188,7 @@ const Calendario = () => {
         views={{
           month: true,
           work_week: true,
-          misReservas: MisReservasView
+          misReservas: MisReservasView,
         }}
         date={date}
         onNavigate={onNavigate}
@@ -198,7 +199,7 @@ const Calendario = () => {
         selectable={true}
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
-        style={{ height: 750 }}
+        style={{ height: 750,  padding: `0 ${paddingValue}`, paddingBottom: `${paddingValue}` }}
         events={eventos}
         ///////////////////////
         onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView
