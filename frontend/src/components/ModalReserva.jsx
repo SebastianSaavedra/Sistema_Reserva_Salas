@@ -181,8 +181,8 @@ const ModalReserva = ({
   }, [selectedSala]);
 
   const limitarHorariosFin = () => {
-    console.log("h inicio: " + horarioInicio);
     if (!horarioInicio || !horariosDisponibles.length) return [];
+    console.log("h inicio: " + horarioInicio);
 
     const horaInicioComparable = parseInt(horarioInicio.split(":")[0]);
     const horariosDisponiblesPosteriores = [];
