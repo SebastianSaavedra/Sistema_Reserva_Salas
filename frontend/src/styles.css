@@ -1,0 +1,83 @@
+.disabled-date {
+    background: #ff000057;
+    cursor: not-allowed;      
+  }
+/*   
+#root > div > div > div > div.rbc-month-view > div.rbc-row.rbc-month-header > div:nth-child(6){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div.rbc-row.rbc-month-header > div:nth-child(7){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-bg > div:nth-child(6)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-bg > div:nth-child(7)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-bg > div:nth-child(6){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-bg > div:nth-child(7){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-bg > div:nth-child(6){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-bg > div:nth-child(7){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-bg > div:nth-child(6){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-bg > div:nth-child(7){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-bg > div:nth-child(6){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-bg > div:nth-child(7){
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
+{
+  display: none;
+}
+#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
+{
+  display: none;
+} */
