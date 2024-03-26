@@ -10,6 +10,9 @@ import ModalReserva from './ModalReserva';
 import { getOfficeId } from '../slices/oficinaSlice';
 import MisReservasView from '../views/MisReservasView';
 import CustomToolbar from './CustomToolbar';
+// import WorkDaysMonthView from '../views/WorkDaysMonthView';
+// import WorkDaysMonthView from 'react-big-calendar/lib/WorkDaysMonth';
+import '../styles.css';
 
 const localizer = momentLocalizer(moment);
 
@@ -101,13 +104,15 @@ const Calendario = () => {
   };
 
   const onSelectSlot = (data) => {
-    setSelectedDate(data.start);
-    setShowModal(true);
+    if (!isDateSelectable(data.start)) {
+      setSelectedDate(data.start);
+      setShowModal(true);
+    }
   };
 
   const onSelectEvent = (event) => {
     const formatedData = formatReservationData(event);
-    console.log(formatedData);
+    // console.log(formatedData);
     setSelectedEvent(formatedData);
   };
 
@@ -151,7 +156,7 @@ const Calendario = () => {
     {
       formattedPeriodicDate = moment(reservationData.periodicValue).format('DD-MM-YYYY');
     }
-    console.log(reservationData);
+    // console.log(reservationData);
 
     return {
       nombre_reservante: reservationData.nombre_reservante || reservationData.title.split(' - ')[0],
@@ -175,6 +180,20 @@ const Calendario = () => {
     periodicType: reserva.periodic_Type,
     periodicValue: reserva.periodic_Value
   }));
+
+  const isDateSelectable = (date) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return date < now; 
+  }
+
+  const DateCellWrapper = ({ children, value: date }) => {
+    const styles = isDateSelectable(date) ? { backgroundColor: '#e6e6e6', cursor: 'not-allowed' } : { cursor: 'pointer' };
+    console.log(children._owner);
+    return React.cloneElement(children, {
+      style: styles,
+    });
+  };
   
   const paddingValue = '15px';
   return (
@@ -182,24 +201,24 @@ const Calendario = () => {
       <Calendar
         components={{
           toolbar: CustomToolbar,
-          dateCellWrapper: ({ children, value }) =>
-            React.cloneElement(children, { "data-date": value })
+          dateCellWrapper: DateCellWrapper
         }}
         views={{
           month: true,
           work_week: true,
           misReservas: MisReservasView,
+          // workDaysMonth: WorkDaysMonthView
         }}
         date={date}
         onNavigate={onNavigate}
         view={view}
         onView={onView}
-        messages={{ previous: "<", today: ".", next: ">", month: "Mes", work_week: "Semana", misReservas: "Mis Reservas" }}
+        messages={{ previous: "<", today: "Hoy", next: ">", month: "Mes", work_week: "Semana", misReservas: "Mis Reservas"/*, workDaysMonth: "Work Days"*/}}
         localizer={localizer}
         selectable={true}
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
-        style={{ height: 750,  padding: `0 ${paddingValue}`, paddingBottom: `${paddingValue}` }}
+        style={{ height: 750,  padding: `0 ${paddingValue}`, paddingBottom: `${paddingValue}`,  }}
         events={eventos}
         ///////////////////////
         onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView
