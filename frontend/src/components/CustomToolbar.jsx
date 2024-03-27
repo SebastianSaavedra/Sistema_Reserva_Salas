@@ -4,7 +4,7 @@ import PropTypes from 'prop-types'
 import clsx from 'clsx'
 import { Navigate as navigate } from 'react-big-calendar';
 import { Dropdown } from 'react-bootstrap';
-import { setOfficeId, getAllOffices } from '../slices/oficinaSlice';
+import { setOfficeId, getAllOffices, getOfficeId } from '../slices/oficinaSlice';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 function ViewNamesGroup({ views: viewNames, view, messages, onView }) {
@@ -52,8 +52,8 @@ export default function CustomToolbar({
   const saveOffice_ReduxState = (office) => {
     setOffice(office.nombre);
     dispatch(setOfficeId(office.oficina_id));
-  }; 
-
+  };
+  
   return (
     <div className="rbc-toolbar">
       <span className="rbc-btn-group">

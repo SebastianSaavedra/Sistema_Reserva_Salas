@@ -27,8 +27,8 @@ const ModalReserva = ({
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState();
   const [isPeriodic, setIsPeriodic] = useState(false);
-  const [periodicType, setPeriodicType] = useState();
-  const [periodicValue, setPeriodicValue] = useState();
+  const [periodic_Type, setPeriodicType] = useState();
+  const [periodic_Value, setPeriodicValue] = useState();
   const [newDate, setNewDate] = useState(selectedDate);
   
   const createReservationDict = () => {
@@ -58,8 +58,8 @@ const ModalReserva = ({
       fecha_inicio: fechaInicio.format('YYYY-MM-DDTHH:mm:ss'),
       fecha_fin: fechaFin.format('YYYY-MM-DDTHH:mm:ss'),
       sala_id: selectedSala.id,
-      periodic_Type: isPeriodic ? periodicType : null,
-      periodic_Value: isPeriodic ? periodicValue : null
+      periodic_Type: isPeriodic ? periodic_Type : null,
+      periodic_Value: isPeriodic ? periodic_Value : null
     };
   
     if (selectedEvent && selectedEvent.reserva_id) {
@@ -114,7 +114,7 @@ const ModalReserva = ({
     },
     
     submitPeriodicReservation: async () => {
-      // console.log(periodicValue);
+      // console.log(periodic_Value);
       // console.log(newDate);
         try {
         const reservation = createReservationDict();
@@ -159,8 +159,9 @@ const ModalReserva = ({
   }, [status]);
 
   useEffect(() => {
-    if (selectedSala) {
+    if (selectedSala && !selectedEvent) {
       const fetchHorariosDisponibles = async () => {
+        console.log(selectedDate);
         const year = selectedDate.getFullYear();
         const month = ("0" + (selectedDate.getMonth() + 1)).slice(-2);
         const day = ("0" + selectedDate.getDate()).slice(-2);
@@ -211,7 +212,7 @@ const ModalReserva = ({
 
   const onPeriodicChange = (date) => {
     const newDate = new Date(date);
-    if ( periodicType === 'Mensual' ) {
+    if ( periodic_Type === 'Mensual' ) {
       const day = selectedDate.getDate(); // Extraer el día
       newDate.setDate(day); // Reemplazar el día en la nueva fecha
     }
@@ -232,14 +233,14 @@ const ModalReserva = ({
   return (
     <Modal centered show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>
-        <Modal.Title>{isModifying ? `Modificar Reserva ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}` : `Reservar ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}`}</Modal.Title>
+        <Modal.Title>{isModifying ? `Modificar Reserva ${moment(selectedEvent.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}` : `Reservar ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}`}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <div style={{ marginBottom: '15px' }}>
+        {/* {!isModifying && <div style={{ marginBottom: '15px' }}>
         <Button variant="primary" onClick={testPeriodicButton} >
           Test Periodico
         </Button>
-        </div>
+        </div>} */}
         <div style={{ marginBottom: '15px' }}>
           {isModifying ? <h6>Sala seleccionada</h6> : <h6>Selecciona una sala:</h6>}
           <Dropdown>
@@ -265,8 +266,12 @@ const ModalReserva = ({
         {isModifying && <div style={{ marginBottom: '15px' }}>
             <h6>Selecciona una nueva fecha:</h6>
               <DatePicker
-                  selected={newDate}
+                  selected={selectedEvent.fecha_inicio}
                   onChange={(date) => setNewDate(date)}
+                  filterDate={(date) => {
+                    const day = date.getDay();
+                    return day !== 0 && day !== 6;
+                  }}
                   dateFormat="dd-MM-yyyy"
                 />
           </div>
@@ -325,7 +330,7 @@ const ModalReserva = ({
           <h6>Tipo de periodicidad:</h6>
           <Dropdown>
             <Dropdown.Toggle variant="primary" id="dropdown-periodic">
-            {`${periodicType ? periodicType : 'Elige una periodicidad'}`}
+            {`${periodic_Type ? periodic_Type : 'Elige una periodicidad'}`}
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {['Semanal','Mensual'].map((periodType) => (
@@ -343,16 +348,16 @@ const ModalReserva = ({
         </div>
         }
         {isPeriodic && <div style={{ marginBottom: '15px' }}>
-          <h6>Selecciona {periodicType === 'Mensual' ? 'hasta que mes' : 'hasta que semana'}:</h6>
+          <h6>Selecciona {periodic_Type === 'Mensual' ? 'hasta que mes' : 'hasta que semana'}:</h6>
           <DatePicker
             showIcon
             toggleCalendarOnIconClick
-            selected={periodicValue}
+            selected={periodic_Value}
             onChange={(date) => onPeriodicChange(date)}
-            dateFormat={periodicType === 'Mensual' ? 'MM/yyyy' : 'dd/MM/yyyy'}
+            dateFormat={periodic_Type === 'Mensual' ? 'MM/yyyy' : 'dd/MM/yyyy'}
             showMonthDropdown
-            showMonthYearPicker={periodicType === 'Mensual'}
-            filterDate={periodicType === 'Semanal' ? filteredWeekDays : undefined}
+            showMonthYearPicker={periodic_Type === 'Mensual'}
+            filterDate={periodic_Type === 'Semanal' ? filteredWeekDays : undefined}
             locale={'es'}
             minDate={selectedDate}
             maxDate={new Date(selectedDate.getFullYear(), 11, 31)} 
