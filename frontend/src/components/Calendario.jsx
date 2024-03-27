@@ -34,13 +34,15 @@ const Calendario = () => {
 
   useEffect(() => {
     const fetchSalas = async () => {
-      try {
-        const salasResponse = await api.getSalas();
-        const numerosSalas = salasResponse.data.map(sala => ({ numero: sala.numero, id: sala._id }));
-        setSalas(numerosSalas);
-      } catch (error) {
-        console.error('Error al solicitar las salas al backend:', error);
-      }
+      if (officeId){
+        try {
+          const salasResponse = await api.getSalas();
+          const numerosSalas = salasResponse.data.map(sala => ({ numero: sala.numero, id: sala._id }));
+          setSalas(numerosSalas);
+        } catch (error) {
+          console.error('Error al solicitar las salas al backend:', error);
+        }      
+      }      
     };
     fetchSalas();
   }, [officeId]);
@@ -90,10 +92,11 @@ const Calendario = () => {
 
   useEffect(() => {
     if (customView_ReservaSelected) {
-      // console.log(customView_ReservaSelected);
+      console.log(customView_ReservaSelected);
       onView(Views.MONTH);
       onNavigate(customView_ReservaSelected.fecha_inicio);
       const formatedData = formatReservationData(customView_ReservaSelected);
+      console.log(formatedData);
       setSelectedEvent(formatedData);
     }
   }, [customView_ReservaSelected]);
@@ -106,12 +109,13 @@ const Calendario = () => {
     if (!isDateSelectable(data.start)) {
       setSelectedDate(data.start);
       setShowModal(true);
+      console.log(salas);
     }
   };
 
   const onSelectEvent = (event) => {
     const formatedData = formatReservationData(event);
-    // console.log(formatedData);
+    console.log(formatedData);
     setSelectedEvent(formatedData);
   };
 
@@ -151,9 +155,9 @@ const Calendario = () => {
     const formattedStartDate = moment(reservationData.fecha_inicio || reservationData.start).format('YYYY-MM-DDTHH:mm:ss');
     const formattedEndDate = moment(reservationData.fecha_fin || reservationData.end).format('YYYY-MM-DDTHH:mm:ss');
     let formattedPeriodicDate = ''
-    if (reservationData.periodicValue)
+    if (reservationData.periodicValue || reservationData.periodic_Value)
     {
-      formattedPeriodicDate = moment(reservationData.periodicValue).format('DD-MM-YYYY');
+      formattedPeriodicDate = moment(reservationData.periodicValue || reservationData.periodic_Value).format('DD-MM-YYYY');
     }
     // console.log(reservationData);
 
@@ -164,7 +168,7 @@ const Calendario = () => {
       sala_numero: reservationData.sala_numero,
       sala_id: reservationData.sala_id,
       reserva_id: reservationData.reserva_id || reservationData._id,
-      periodicType: reservationData.periodicType || '',
+      periodicType: reservationData.periodicType || reservationData.periodic_Type || '',
       periodicValue: formattedPeriodicDate
     };
   };
@@ -217,7 +221,7 @@ const Calendario = () => {
         selectable={true}
         onSelectSlot={onSelectSlot}
         onSelectEvent={onSelectEvent}
-        style={{ height: 750,  padding: `0 ${paddingValue}`, paddingBottom: `${paddingValue}`,  }}
+        style={{ height: 700,  padding: `0 ${paddingValue}`, paddingBottom: `${paddingValue}`,  }}
         events={eventos}
         ///////////////////////
         onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView

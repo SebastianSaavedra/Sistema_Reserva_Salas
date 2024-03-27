@@ -12,6 +12,7 @@
     "classnames": "^2.5.1",
     "date-arithmetic": "^4.1.0",
     "dayjs": "^1.11.10",
+    "package.json": "^0.0.0",
     "react": "^18.2.0",
     "react-big-calendar": "^1.8.7",
     "react-bootstrap": "^2.10.0",
