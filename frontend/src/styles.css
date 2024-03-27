@@ -2,82 +2,12 @@
     background: #ff000057;
     cursor: not-allowed;      
   }
-/*   
-#root > div > div > div > div.rbc-month-view > div.rbc-row.rbc-month-header > div:nth-child(6){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div.rbc-row.rbc-month-header > div:nth-child(7){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-bg > div:nth-child(6)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-bg > div:nth-child(7)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-bg > div:nth-child(6){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-bg > div:nth-child(7){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-bg > div:nth-child(6){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-bg > div:nth-child(7){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-bg > div:nth-child(6){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-bg > div:nth-child(7){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-bg > div:nth-child(6){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-bg > div:nth-child(7){
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(2) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(3) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(4) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(5) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-content > div:nth-child(1) > div:nth-child(6)
-{
-  display: none;
-}
-#root > div > div > div > div.rbc-month-view > div:nth-child(6) > div.rbc-row-content > div:nth-child(1) > div:nth-child(7)
-{
-  display: none;
-} */
+
+  /* Las siguientes lineas se encargan de borrar el header de sabado/domingo del calendario,
+  no es la mejor practica... pero por ahora funciona */
+  #root > div > div > div > div.rbc-month-view > div.rbc-row.rbc-month-header > div:nth-child(6){
+    display: none;
+  }
+  #root > div > div > div > div.rbc-month-view > div.rbc-row.rbc-month-header > div:nth-child(7){
+    display: none;
+  }
