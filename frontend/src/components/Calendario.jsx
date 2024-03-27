@@ -10,8 +10,7 @@ import ModalReserva from './ModalReserva';
 import { getOfficeId } from '../slices/oficinaSlice';
 import MisReservasView from '../views/MisReservasView';
 import CustomToolbar from './CustomToolbar';
-// import WorkDaysMonthView from '../views/WorkDaysMonthView';
-// import WorkDaysMonthView from 'react-big-calendar/lib/WorkDaysMonth';
+import WorkDaysMonthView from 'react-big-calendar/lib/WorkDaysMonth';
 import '../styles.css';
 
 const localizer = momentLocalizer(moment);
@@ -189,7 +188,7 @@ const Calendario = () => {
 
   const DateCellWrapper = ({ children, value: date }) => {
     const styles = isDateSelectable(date) ? { backgroundColor: '#e6e6e6', cursor: 'not-allowed' } : { cursor: 'pointer' };
-    console.log(children._owner);
+    // console.log(children._owner);
     return React.cloneElement(children, {
       style: styles,
     });
@@ -204,7 +203,7 @@ const Calendario = () => {
           dateCellWrapper: DateCellWrapper
         }}
         views={{
-          month: true,
+          month: WorkDaysMonthView,
           work_week: true,
           misReservas: MisReservasView,
           // workDaysMonth: WorkDaysMonthView
