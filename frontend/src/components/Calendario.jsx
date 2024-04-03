@@ -115,7 +115,7 @@ const Calendario = () => {
 
   const onSelectEvent = (event) => {
     const formatedData = formatReservationData(event);
-    console.log(formatedData);
+    // console.log(formatedData);
     setSelectedEvent(formatedData);
   };
 
