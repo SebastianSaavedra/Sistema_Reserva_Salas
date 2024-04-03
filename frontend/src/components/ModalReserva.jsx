@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Dropdown } from 'react-bootstrap';
+import { Modal, Button, Dropdown, Tabs, Tab } from 'react-bootstrap';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { getDay } from 'date-fns';
 import es from 'date-fns/locale/es';
@@ -30,6 +30,7 @@ const ModalReserva = ({
   const [periodic_Type, setPeriodicType] = useState();
   const [periodic_Value, setPeriodicValue] = useState();
   const [newDate, setNewDate] = useState(selectedDate);
+  const [tabKey, setTabKey] = useState("sala");
   
   const createReservationDict = () => {
     const fechaInicio = moment(selectedDate).isSame(newDate) ? 
@@ -159,12 +160,13 @@ const ModalReserva = ({
   }, [status]);
 
   useEffect(() => {
-    if (selectedSala && !selectedEvent) {
+    if (selectedSala || selectedEvent) {
       const fetchHorariosDisponibles = async () => {
-        console.log(selectedDate);
-        const year = selectedDate.getFullYear();
-        const month = ("0" + (selectedDate.getMonth() + 1)).slice(-2);
-        const day = ("0" + selectedDate.getDate()).slice(-2);
+        console.log(selectedEvent);
+        const date = selectedEvent ? new Date(selectedEvent.fecha_inicio) : selectedDate;
+        const year = date.getFullYear();
+        const month = ("0" + (date.getMonth() + 1)).slice(-2);
+        const day = ("0" + date.getDate()).slice(-2);
         const apiDateString = `${year}-${month}-${day}`;
         try {
           const res = await api.getHorariosDisponibles(
@@ -179,7 +181,7 @@ const ModalReserva = ({
       };
       fetchHorariosDisponibles();
     }
-  }, [selectedSala]);
+  }, [selectedSala, selectedEvent]);
 
   const limitarHorariosFin = () => {
     if (!horarioInicio || !horariosDisponibles.length) return [];
@@ -230,57 +232,118 @@ const ModalReserva = ({
     setPeriodicValue(selectedDate);
   };
 
+  const Separator = () => {
+    return <div style={{ height: '1px', background: '#ddd', margin: '10px 0' }}></div>;
+  };
+  
   return (
     <Modal centered show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>
         <Modal.Title>{isModifying ? `Modificar Reserva ${moment(selectedEvent.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}` : `Reservar ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}`}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {/* {!isModifying && <div style={{ marginBottom: '15px' }}>
-        <Button variant="primary" onClick={testPeriodicButton} >
-          Test Periodico
-        </Button>
-        </div>} */}
+      {!isModifying ? (
+    <Tabs 
+      id="Reservation-tab"
+      activeKey={tabKey}
+      onSelect={(k) => setTabKey(k)}
+      className='mb-3'
+      fill
+    >
+    <Tab eventKey="sala" title="Seleccionar sala">
+      <div style={{ marginBottom: '15px' }}>
+        {<h6>Selecciona una sala:</h6>}
+        <Dropdown>
+          <Dropdown.Toggle
+            variant="primary"
+            id="dropdown-basic"
+          >
+            {'Sala'}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {salas.map(sala => (
+              <Dropdown.Item
+                key={sala.id}
+                onClick={() => handler.SalaSelect(sala)}
+              >
+                {sala.numero}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <h6>Selecciona un horario de inicio:</h6>
+        <Dropdown>
+          <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio" disabled={!selectedSala}>
+            {horarioInicio ? horarioInicio : 'Horario de inicio'}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+            {horariosDisponibles.map(horario => (
+              <Dropdown.Item
+                key={horario}
+                onClick={() => handler.HorarioInicioSelect(horario)}
+              >
+                {horario}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </div>
+      <div style={{ marginBottom: '15px' }}>
+        <h6>Selecciona un horario de fin:</h6>
+        <Dropdown>
+          <Dropdown.Toggle variant="primary" id="dropdown-horario-fin" disabled={!horarioInicio}>
+            {horarioFin ? horarioFin : 'Horario de fin'}
+          </Dropdown.Toggle>
+          <Dropdown.Menu>
+          {Array.isArray(horariosDisponibles) && horariosFinLimitados.map(horario => (
+              <Dropdown.Item
+                key={horario}
+                onClick={() => handler.HorarioFinSelect(horario)}
+              >
+                {horario}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      </div>
+    </Tab>
+    <Tab eventKey="disponibilidad" title="Buscar disponibilidad horaria">
+      <p>Contenido de la pestaña "Buscar disponibilidad horaria"</p>
+    </Tab>
+  </Tabs>
+    ) : (
+      <div>
         <div style={{ marginBottom: '15px' }}>
-          {isModifying ? <h6>Sala seleccionada</h6> : <h6>Selecciona una sala:</h6>}
+          <h6>Sala seleccionada</h6>
           <Dropdown>
             <Dropdown.Toggle
-              variant="primary"
+              variant="secondary"
               id="dropdown-basic"
               disabled={isModifying}
             >
-              {selectedSala ? `Sala ${selectedSala.numero}` : 'Sala'}
+              {selectedSala && `Sala ${selectedSala.numero}`}
             </Dropdown.Toggle>
-            <Dropdown.Menu>
-              {salas.map(sala => (
-                <Dropdown.Item
-                  key={sala.id}
-                  onClick={() => handler.SalaSelect(sala)}
-                >
-                  {sala.numero}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
           </Dropdown>
         </div>
-        {isModifying && <div style={{ marginBottom: '15px' }}>
-            <h6>Selecciona una nueva fecha:</h6>
-              <DatePicker
-                  selected={selectedEvent.fecha_inicio}
-                  onChange={(date) => setNewDate(date)}
-                  filterDate={(date) => {
-                    const day = date.getDay();
-                    return day !== 0 && day !== 6;
-                  }}
-                  dateFormat="dd-MM-yyyy"
-                />
-          </div>
-        }
+        <div style={{ marginBottom: '15px' }}>
+          <h6>Selecciona una nueva fecha:</h6>
+          <DatePicker
+            selected={newDate}
+            onChange={(date) => setNewDate(date)}
+            filterDate={(date) => {
+              const day = date.getDay();
+              return day !== 0 && day !== 6;
+            }}
+            dateFormat="dd-MM-yyyy"
+          />
+        </div>
         <div style={{ marginBottom: '15px' }}>
           <h6>Selecciona un horario de inicio:</h6>
           <Dropdown>
-            <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio" disabled={!selectedSala}>
-              {horarioInicio ? horarioInicio : 'Horario de inicio'}
+            <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio">
+              {horarioInicio}
             </Dropdown.Toggle>
             <Dropdown.Menu>
               {horariosDisponibles.map(horario => (
@@ -312,7 +375,10 @@ const ModalReserva = ({
             </Dropdown.Menu>
           </Dropdown>
         </div>
+      </div>
+    )}
         {!isModifying && <div style={{ marginBottom: '15px' }}>
+          <Separator        /* Agrega una barra de espaciado*/      />
           <h6>¿Reserva periódica?</h6>
           <label>
             <input
