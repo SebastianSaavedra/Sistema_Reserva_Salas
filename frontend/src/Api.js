@@ -19,6 +19,10 @@ const ApiCaller = () => {
       return axios.get(`${url_web}/salas/${selectedOfficeId}`);
     },
   
+    getSalasDisponibles: (fechaInicio, fechaFin) => {
+      return axios.get(`${url_web}/salas_disponibles/${selectedOfficeId}?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`);
+    },
+  
     getHorariosDisponibles: (fecha, sala_id, reserva_id) => {
       return axios.get(`${url_web}/horarios_disponibles/${selectedOfficeId}?fecha=${fecha}&sala_id=${sala_id}&reserva_id=${reserva_id}`);
     },
