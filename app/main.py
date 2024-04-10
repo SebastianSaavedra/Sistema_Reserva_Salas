@@ -7,10 +7,11 @@ from bson import ObjectId, json_util
 from pydantic import BaseModel
 import calendar
 from datetime import datetime, timedelta
+from dateutil import parser
 from dateutil.rrule import rrule, MONTHLY, WEEKLY
 from dateutil.relativedelta import relativedelta
 from dateutil.rrule import MO, TU, WE, TH, FR, SA, SU
-from typing import Union, Optional
+from typing import Optional
 # from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,13 +68,11 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
             )
         # ic(f"Paso el primer if de los horarios disponibles")
 
-        # Check for overlap with existing reservations
         for r in reservas_dia:
             if request.method == 'PUT' and str(r['_id']) == request.path_params['reserva_id']:  # Reserva_id solo es entregada en la solicitud PUT, en el caso de POST se entrega sala_id, por eso la condicional
                 # Skip the current reservation being modified
                 continue
 
-            # Check for overlap
             if (r["fecha_inicio"] < reserva.fecha_fin) and (r["fecha_fin"] > reserva.fecha_inicio):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -81,7 +80,6 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
                 )
 
             ic(f"La reserva seleccionada es: {r}")
-        # If no overlap is found, the room is available
         ic("fin verificar_disponibilidad")
         return True
 
@@ -113,7 +111,7 @@ def obtener_fechas_periodicas(fecha_inicio, dia_semana, semana_mes, valor_period
         frecuencias = {"Semanal": WEEKLY,"Mensual": MONTHLY}
         
         valor_periodico = valor_periodico.split("T")[0]
-        fecha_fin = datetime.strptime(valor_periodico, "%Y-%m-%d").date()
+        fecha_fin = parse_fecha(valor_periodico).date()
         cantidad_meses = (relativedelta(fecha_fin,fecha_inicio.date()).months + 1)
         fechas = []
         fechas = list(rrule(
@@ -141,6 +139,51 @@ async def mostrar_lista_salas(request: Request, oficina_id: str):
         return salas_ordenadas
     except Exception as e:
         ic(f"Error al obtener lista de salas: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
+    
+# Lista de Salas DISPONIBLES de una Oficina, basado en un rango horario.
+@app.get("/salas_disponibles/{oficina_id}", response_class=JSONResponse)
+async def mostrar_lista_salas_disponibles(request: Request, oficina_id: str, fechaInicio: str, fechaFin: str):
+    try:
+        salas = await obtener_salas(request.app.mongodb_client[oficina_id])
+        dateInicio = parser.parse(fechaInicio).replace(tzinfo=None)
+        dateFin = parser.parse(fechaFin).replace(tzinfo=None)
+        ic(fechaInicio, fechaFin,dateInicio,dateFin, salas)
+        
+        query = {
+            "$and": [
+                {
+                    "fecha_fin": {"$gte": dateInicio},
+                },
+                {
+                    "fecha_inicio": {"$lte": dateFin},
+                },
+            ]
+        }
+        projection = {"_id": 0, "fecha_inicio": 1, "sala_numero": 1} #"fecha_inicio": 1, "fecha_fin": 1, "sala_id": 1, 
+
+        reservas = await request.app.mongodb_client[oficina_id]["reservas"].find(
+            query, projection=projection
+        ).to_list(None)
+        
+        ic(f"Length: {len(reservas)}")
+        ic(reservas)
+        salas_disponibles = [
+            sala for sala in salas
+            if (any(reserva["sala_numero"] == sala["numero"] and reserva["fecha_inicio"] == dateFin for reserva in reservas))
+            or (sala["numero"] not in [reserva["sala_numero"] for reserva in reservas])
+        ]
+
+        ic(salas_disponibles)
+        salas_ordenadas = sorted(salas_disponibles, key=lambda x: x.get("numero", 0))
+        ic(salas_ordenadas)
+        for sala in salas_ordenadas:
+            sala["_id"] = str(sala["_id"])
+
+        return salas_ordenadas
+    except Exception as e:
+        ic(f"Error al obtener lista de salas disponibles: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
@@ -196,8 +239,8 @@ async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str
         fecha_dt = parse_fecha(fecha)
         # Establecer el rango de tiempo para el día seleccionado
         rango_am = fecha_dt.replace(hour=8, minute=0, second=0)
-        rango_pm = fecha_dt.replace(hour=23, minute=59, second=59)
-
+        rango_pm = fecha_dt.replace(hour=20, minute=0, second=0)
+        # ic(sala_id)
         intervalo = timedelta(minutes=60)
         if reserva_id != "null":
             reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
