@@ -197,6 +197,13 @@ const Calendario = () => {
       style: styles,
     });
   };
+
+  const onShowMore = useCallback(
+    (events, date) => {
+      setView(Views.WORK_WEEK);
+    },
+    [setView]
+  );
   
   const paddingValue = '15px';
   return (
@@ -223,6 +230,7 @@ const Calendario = () => {
         onSelectEvent={onSelectEvent}
         style={{ height: 700,  padding: `0 ${paddingValue}`, paddingBottom: `${paddingValue}`,  }}
         events={eventos}
+        onShowMore={onShowMore}
         ///////////////////////
         onReservationClick={handleReservationClick} // Este prop pertenece a MisReservasView
         onApiValue={llamadoAPI} // Este prop pertenece a MisReservasView

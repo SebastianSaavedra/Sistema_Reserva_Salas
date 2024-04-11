@@ -163,7 +163,6 @@ const ModalReserva = ({
   useEffect(() => {
     if (selectedSala) {
       const fetchHorariosDisponibles = async () => {
-        console.log(selectedEvent);
         const date = selectedEvent ? new Date(selectedEvent.fecha_inicio) : selectedDate;
         const year = date.getFullYear();
         const month = ("0" + (date.getMonth() + 1)).slice(-2);
@@ -267,7 +266,6 @@ const ModalReserva = ({
     return <div style={{ height: '1px', background: '#ddd', margin: '10px 0' }}></div>;
   };
   
-  console.log(salasDisponibles)
   return (
     <Modal centered show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>

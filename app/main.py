@@ -36,11 +36,12 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
     try:
         # ic(f"FUNCION verificar_disponibilidad - reserva: {reserva.fecha_inicio}")
         horarios_disponibles = await obtener_horarios_disponibles(
-            fecha=reserva.fecha_inicio,
+            fechaInicio=reserva.fecha_inicio,
             sala_id=reserva.sala_id,
             oficina_id=oficina_id,
             request=request,
-            reserva_id=request.path_params['reserva_id'] if request.method == 'PUT' else None
+            reserva_id=request.path_params['reserva_id'] if request.method == 'PUT' else None,
+            fechaFin=reserva.fecha_fin
         )
         # ic(f"FUNCION verificar_disponibilidad - horarios_disponibles: {horarios_disponibles}")
 
@@ -99,7 +100,7 @@ async def obtener_salas(db):
 async def obtener_reservas(db):
     return await db["reservas"].find().to_list(None)
 
-def parse_fecha(fecha):
+def parse_fecha_to_datetime(fecha):
     if isinstance(fecha, str):
         return datetime.strptime(fecha, "%Y-%m-%d")
     return fecha
@@ -111,7 +112,7 @@ def obtener_fechas_periodicas(fecha_inicio, dia_semana, semana_mes, valor_period
         frecuencias = {"Semanal": WEEKLY,"Mensual": MONTHLY}
         
         valor_periodico = valor_periodico.split("T")[0]
-        fecha_fin = parse_fecha(valor_periodico).date()
+        fecha_fin = parse_fecha_to_datetime(valor_periodico).date()
         cantidad_meses = (relativedelta(fecha_fin,fecha_inicio.date()).months + 1)
         fechas = []
         fechas = list(rrule(
@@ -234,32 +235,48 @@ async def get_reservas_by_user(request: Request, oficina_id: str):
 
 # Operacion para obtener los horarios disponibles dependiendo de la fecha de inicio y fin
 @app.get("/horarios_disponibles/{oficina_id}")
-async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str, request: Request,  reserva_id: Optional[str] = None):
+async def obtener_horarios_disponibles(fechaInicio: str, sala_id: str, oficina_id: str, request: Request,  reserva_id: Optional[str] = None, fechaFin: Optional[str] = None):
     try:
-        fecha_dt = parse_fecha(fecha)
-        # Establecer el rango de tiempo para el día seleccionado
+        fecha_dt = parse_fecha_to_datetime(fechaInicio)
+        if fechaFin: 
+            fecha_Fin_dt = parse_fecha_to_datetime(fechaFin)
+            # ic(fecha_Fin_dt)
         rango_am = fecha_dt.replace(hour=8, minute=0, second=0)
         rango_pm = fecha_dt.replace(hour=20, minute=0, second=0)
         # ic(sala_id)
         intervalo = timedelta(minutes=60)
-        if reserva_id != "null":
-            reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
-                "_id": {"$ne": ObjectId(reserva_id)},
-                "sala_id": sala_id,
-            }).to_list(None)
-        else:
-            reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find({
-                "sala_id": sala_id
-            }).to_list(None)
 
-        # ic(f"reservas dia: {reservas_dia} y reserva_id {reserva_id} ")
+        base_query = {"sala_id": sala_id}
+        search_criteria = None
+        if reserva_id and reserva_id != "null":
+            search_criteria = {"_id": {"$ne": ObjectId(reserva_id)}}
+        elif fechaFin:
+            search_criteria = {
+            "$and": [
+                {"fecha_fin": {"$gte": fecha_dt}},
+                {"fecha_inicio": {"$lte": fecha_Fin_dt}},
+            ]
+            }
+
+        query = base_query.copy()
+        if search_criteria:
+            query.update(search_criteria)
+
+        reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find(
+            query
+        ).to_list(None)
+
+        # ic(reservas_dia)
         horarios_disponibles = []
         while rango_am <= rango_pm:
             ocupado = any(
-                reserva["fecha_fin"].replace(tzinfo=None) > rango_am and
-                reserva["fecha_inicio"].replace(tzinfo=None) < rango_am + intervalo
+                (reserva["fecha_fin"].replace(tzinfo=None) > rango_am and
+                reserva["fecha_inicio"].replace(tzinfo=None) < rango_am + intervalo)
+                if not fechaFin or reserva["fecha_inicio"] != fecha_Fin_dt
+                else False
                 for reserva in reservas_dia
             )
+            # ic(ocupado, rango_am)
             if not ocupado:
                 horarios_disponibles.append(rango_am.strftime("%H:%M"))
             rango_am += intervalo
@@ -268,7 +285,7 @@ async def obtener_horarios_disponibles(fecha: str, sala_id: str, oficina_id: str
     except Exception as e:
         traceback.print_exc()
         return {f"Error al obtener horarios disponibles: {e}"} 
-
+    
 # Operación para hacer una reserva en la base de datos
 @app.post("/reservar/{oficina_id}", response_class=JSONResponse)
 async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
