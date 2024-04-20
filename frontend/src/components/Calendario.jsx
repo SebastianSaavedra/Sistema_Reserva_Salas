@@ -52,6 +52,7 @@ const Calendario = () => {
       try {
         const reservasResponse = await api.getReservas();
         setReservas(reservasResponse.data);
+        console.log("UseEffect reservas")
       } catch (error) {
         console.error('Error al solicitar las reservas al backend:', error);
       }
@@ -106,11 +107,14 @@ const Calendario = () => {
   };
 
   const onSelectSlot = (data) => {
-    if (!isDateSelectable(data.start)) {
       setSelectedDate(data.start);
       setShowModal(true);
       console.log(salas);
-    }
+    // if (!isDateSelectable(data.start)) {
+    //   setSelectedDate(data.start);
+    //   setShowModal(true);
+    //   console.log(salas);
+    // }
   };
 
   const onSelectEvent = (event) => {
