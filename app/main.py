@@ -17,6 +17,12 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
 from icecream import ic
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler('logs.log')
+logger.addHandler(file_handler)
 
 app = FastAPI()
 mongo_db_url = "mongodb://localhost:27017"
@@ -150,33 +156,46 @@ async def mostrar_lista_salas_disponibles(request: Request, oficina_id: str, fec
         salas = await obtener_salas(request.app.mongodb_client[oficina_id])
         dateInicio = parser.parse(fechaInicio).replace(tzinfo=None)
         dateFin = parser.parse(fechaFin).replace(tzinfo=None)
-        ic(fechaInicio, fechaFin,dateInicio,dateFin, salas)
-        
-        query = {
-            "$and": [
-                {
-                    "fecha_fin": {"$gte": dateInicio},
-                },
-                {
-                    "fecha_inicio": {"$lte": dateFin},
-                },
-            ]
-        }
-        projection = {"_id": 0, "fecha_inicio": 1, "sala_numero": 1} #"fecha_inicio": 1, "fecha_fin": 1, "sala_id": 1, 
+        date_inicio_str = dateInicio.strftime("%H:%M")
+        date_fin_str = dateFin.strftime("%H:%M")
+        horario_completo = ['08:00',
+                            '09:00',
+                            '10:00',
+                            '11:00',
+                            '12:00',
+                            '13:00',
+                            '14:00',
+                            '15:00',
+                            '16:00',
+                            '17:00',
+                            '18:00',
+                            '19:00',
+                            '20:00']
+        # ic(date_inicio_str, date_fin_str)
 
-        reservas = await request.app.mongodb_client[oficina_id]["reservas"].find(
-            query, projection=projection
-        ).to_list(None)
-        
-        ic(f"Length: {len(reservas)}")
-        ic(reservas)
-        salas_disponibles = [
-            sala for sala in salas
-            if (any(reserva["sala_numero"] == sala["numero"] and reserva["fecha_inicio"] == dateFin for reserva in reservas))
-            or (sala["numero"] not in [reserva["sala_numero"] for reserva in reservas])
-        ]
+        salas_disponibles = []
+        for sala in salas:
+            horario_disponibles_por_sala = await obtener_horarios_disponibles(
+                sala_id=str(sala["_id"]),
+                fechaInicio=dateInicio,
+                fechaFin=dateFin,
+                oficina_id=oficina_id,
+                request=request
+            )
+            ic(sala,horario_disponibles_por_sala)
 
-        ic(salas_disponibles)
+            if date_inicio_str in horario_disponibles_por_sala and date_fin_str in horario_disponibles_por_sala:
+                is_room_fully_available = True
+
+                for i in range(horario_completo.index(date_inicio_str), horario_completo.index(date_fin_str) + 1):
+                    if horario_disponibles_por_sala[i] != horario_completo[i]:
+                        is_room_fully_available = False
+                        break
+
+                if is_room_fully_available:
+                    salas_disponibles.append(sala)
+
+        # ic(salas_disponibles)
         salas_ordenadas = sorted(salas_disponibles, key=lambda x: x.get("numero", 0))
         ic(salas_ordenadas)
         for sala in salas_ordenadas:
@@ -240,7 +259,7 @@ async def obtener_horarios_disponibles(fechaInicio: str, sala_id: str, oficina_i
         fecha_dt = parse_fecha_to_datetime(fechaInicio)
         if fechaFin: 
             fecha_Fin_dt = parse_fecha_to_datetime(fechaFin)
-            # ic(fecha_Fin_dt)
+            # ic(fecha_dt, fecha_Fin_dt,sala_id)
         rango_am = fecha_dt.replace(hour=8, minute=0, second=0)
         rango_pm = fecha_dt.replace(hour=20, minute=0, second=0)
         # ic(sala_id)
@@ -257,16 +276,17 @@ async def obtener_horarios_disponibles(fechaInicio: str, sala_id: str, oficina_i
                 {"fecha_inicio": {"$lte": fecha_Fin_dt}},
             ]
             }
-
         query = base_query.copy()
         if search_criteria:
             query.update(search_criteria)
 
+        # ic(query)
         reservas_dia = await request.app.mongodb_client[oficina_id]["reservas"].find(
             query
         ).to_list(None)
 
-        # ic(reservas_dia)
+        # logger.debug(ic(sala_id,reservas_dia_TEST))
+        # ic(reservas_dia,reservas_dia_TEST)
         horarios_disponibles = []
         while rango_am <= rango_pm:
             ocupado = any(
