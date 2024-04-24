@@ -107,14 +107,14 @@ const Calendario = () => {
   };
 
   const onSelectSlot = (data) => {
+      // setSelectedDate(data.start);
+      // setShowModal(true);
+      // console.log(salas);
+    if (!isDateSelectable(data.start)) {
       setSelectedDate(data.start);
       setShowModal(true);
       console.log(salas);
-    // if (!isDateSelectable(data.start)) {
-    //   setSelectedDate(data.start);
-    //   setShowModal(true);
-    //   console.log(salas);
-    // }
+    }
   };
 
   const onSelectEvent = (event) => {
@@ -196,7 +196,6 @@ const Calendario = () => {
 
   const DateCellWrapper = ({ children, value: date }) => {
     const styles = isDateSelectable(date) ? { backgroundColor: '#e6e6e6', cursor: 'not-allowed' } : { cursor: 'pointer' };
-    // console.log(children._owner);
     return React.cloneElement(children, {
       style: styles,
     });
