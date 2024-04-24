@@ -58,15 +58,13 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
         }).to_list(None)
         # ic(f"FUNCION verificar_disponibilidad - reservas: {reservas_dia}")
 
-        # ic("REQUEST PARAMS: ")
-        # ic(request.path_params)
+        # ic(f"REQUEST PARAMS: {request.path_params}")
         # ic(f"reserva: {reserva}")
         if request.method == "PUT":
-            if len(reservas_dia) == 1 and reservas_dia[0]["nombre_reservante"] == reserva.nombre_reservante: return True
+            if len(reservas_dia) == 1 and str(reservas_dia[0]["_id"]) == request.path_params['reserva_id']: return True
             for r in reservas_dia:
                 if str(r['_id']) == request.path_params['reserva_id'] and r["fecha_inicio"] <= reserva.fecha_inicio and r["fecha_fin"] >= reserva.fecha_fin: return True
 
-        # Check if the new time slot is within the available time slots
         if (reserva.fecha_inicio.strftime("%H:%M") not in horarios_disponibles) or \
            (reserva.fecha_fin.strftime("%H:%M") not in horarios_disponibles):
             raise HTTPException(
@@ -77,7 +75,6 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
 
         for r in reservas_dia:
             if request.method == 'PUT' and str(r['_id']) == request.path_params['reserva_id']:  # Reserva_id solo es entregada en la solicitud PUT, en el caso de POST se entrega sala_id, por eso la condicional
-                # Skip the current reservation being modified
                 continue
 
             if (r["fecha_inicio"] < reserva.fecha_fin) and (r["fecha_fin"] > reserva.fecha_inicio):
@@ -400,34 +397,38 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
 # Operación para buscar una reserva mediante el ID de la sala y actualizar el datetime de la reserva
 @app.put("/actualizar_reserva/{oficina_id}/{reserva_id}", response_class=JSONResponse)
 async def update_reserva(oficina_id: str ,reserva_id: str ,reserva_actualizada_json: dict, request: Request):
-    reserva_actualizada = Reserva(**reserva_actualizada_json)
-    ic(reserva_actualizada)
+    try:
+        reserva_actualizada = Reserva(**reserva_actualizada_json)
+        ic(reserva_actualizada)
 
-    # Verificar disponibilidad con la nueva fecha
-    if not await verificar_disponibilidad(reserva_actualizada, oficina_id, request):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"La sala ya está reservada para ese intervalo de tiempo. "
-                    f"{reserva_actualizada.fecha_inicio} {reserva_actualizada.fecha_fin} "
-                    f"{reserva['fecha_inicio']} {reserva['fecha_fin']} "
-        )
-       
-    async with await request.app.mongodb_client.start_session() as session:
-        reserva = await request.app.mongodb_client[oficina_id]["reservas"].find_one({
-            "_id": ObjectId(reserva_id)
-        })
-        if not reserva:
-            raise HTTPException(status_code=404, detail="Reserva no encontrada")
-
-        # Iniciar la transacción
-        async with session.start_transaction():
-            # Actualizar la fecha de la reserva
-            await request.app.mongodb_client[oficina_id]["reservas"].update_one(
-                {"_id": ObjectId(reserva_id)},
-                {"$set": {"fecha_inicio": reserva_actualizada.fecha_inicio,
-                          "fecha_fin": reserva_actualizada.fecha_fin}}
+        # Verificar disponibilidad con la nueva fecha
+        if not await verificar_disponibilidad(reserva_actualizada, oficina_id, request):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"La sala ya está reservada para ese intervalo de tiempo. "
+                        f"{reserva_actualizada.fecha_inicio} {reserva_actualizada.fecha_fin}"
             )
-        # return Reserva(**nueva_reserva_actualizada, oid=str(nueva_reserva_actualizada["_id"]))
+        
+        async with await request.app.mongodb_client.start_session() as session:
+            reserva = await request.app.mongodb_client[oficina_id]["reservas"].find_one({
+                "_id": ObjectId(reserva_id)
+            })
+            if not reserva:
+                raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+            # Iniciar la transacción
+            async with session.start_transaction():
+                # Actualizar la fecha de la reserva
+                await request.app.mongodb_client[oficina_id]["reservas"].update_one(
+                    {"_id": ObjectId(reserva_id)},
+                    {"$set": {"fecha_inicio": reserva_actualizada.fecha_inicio,
+                            "fecha_fin": reserva_actualizada.fecha_fin}}
+                )
+            # return Reserva(**nueva_reserva_actualizada, oid=str(nueva_reserva_actualizada["_id"]))
+    except Exception as e:
+        ic(f"Error al actualizar reserva: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 # Operación para eliminar una reserva por su ID
 @app.delete("/eliminar_reserva/{oficina_id}", response_class=JSONResponse)

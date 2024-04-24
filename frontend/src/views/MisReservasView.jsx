@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Table, Button, Dropdown, Collapse } from 'react-bootstrap';
+import { Table, Button, Dropdown, Collapse, Modal } from 'react-bootstrap';
 import ApiCaller from '../Api';
 import moment from 'moment';
 import { getOfficeId } from '../slices/oficinaSlice';
@@ -16,6 +16,8 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   const [reservasFormateadas,setReservasFormateadas] = useState();
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [periodicTypeFilter, setPeriodicTypeFilter] = useState('');
+  const [show, setShow] = useState(false);
+  const [reservaToDelete, setReservaToDelete] = useState(null);
 
   const formatDate = (date) => moment(date).format('dddd, D [de] MMMM [de] YYYY');
   const formatTime = (date) => moment(date).format('h:mm A');
@@ -92,7 +94,7 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
   }
 
   const deleteReservasEspecificas = async (reserva) => {
-    try{      
+    try{
       const response = await api.deleteMisReservas(reserva.periodic_type,reserva.periodicValue.split('_')[0]);
       console.log(response);
       if (response.status === 200) {
@@ -103,99 +105,111 @@ const MisReservasView = ({ onReservationClick, onApiValue, onApiAction }) => {
       console.error('Error al eliminar la reserva:', error);
     }
   }
+  
+  const handleClose = () => setShow(false);
+  const handleDelete = () => {
+    deleteReservasEspecificas(reservaToDelete);
+    setShow(false);
+    setReservaToDelete(null);
+  };
 
-const renderPeriodicReservationRow = (reservaGroup, index) => (
-  <tr key={index}>
-    <td style={{ textAlign: "center" }}>
-      <strong>Periodica {reservaGroup.periodic_type}</strong>
-    </td>
-    <td>
-      <strong>Inicio periodico:</strong> {formatDate(reservaGroup.reservasGroup[0].fecha_inicio)}
-    </td>
-    <td>
-      {formatTime(reservaGroup.reservasGroup[0].fecha_inicio)} - {formatTime(reservaGroup.reservasGroup[0].fecha_fin)}
-    </td>
-    <td width="3%" style={{ textAlign: "center" }}>
-      {reservaGroup.reservasGroup[0].sala_numero}
-    </td>
-    <td width="10%" style={{ textAlign: "center" }}>
-      <Button variant="primary" onClick={() => handleVerDetallesClick(reservaGroup)}>
-        Ver detalles ({reservaGroup.reservasGroup.length})
-      </Button>
-      <Collapse in={expandedGroup === reservaGroup.periodicValue}>
-        <div>
-          <td></td>
-          <Button variant="danger" size="sm" onClick={() => deleteReservasEspecificas(reservaGroup)}>
-            Eliminar reservas
-          </Button>
-        </div>
-      </Collapse>
-    </td>
-  </tr>
-);
+  const openDeleteModal = (reservaGroup) => {
+    setReservaToDelete(reservaGroup);
+    setShow(true);
+  };
 
-const renderPeriodicReservationDetails = (reservaGroup) => (
-  <>
-  <td colSpan={5}>
-      <Collapse in={expandedGroup === reservaGroup.periodicValue}>
-        <div>
-          <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "center" }}>#</th>
-                <th style={{ textAlign: "left" }}>Fecha</th>
-                <th style={{ textAlign: "left" }}>Horario</th>
-                <th style={{ textAlign: "center" }}>Sala</th>
-                <th style={{ textAlign: "center" }}>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservaGroup.reservasGroup.map((reserva, index) => (
-                <tr key={index}>
-                  <td width="3%" style={{ textAlign: "center" }}>
-                    {index + 1 + indexOfFirstEntry}
-                  </td>
-                  <td>{formatDate(reserva.fecha_inicio)}</td>
-                  <td>
-                    {formatTime(reserva.fecha_inicio)} - {formatTime(reserva.fecha_fin)}
-                  </td>
-                  <td width="3%" style={{ textAlign: "center" }}>
-                    {reserva.sala_numero}
-                  </td>
-                  <td width="10%" style={{ textAlign: "center" }}>
-                    <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>
-                      Ver reserva
-                    </Button>
-                  </td>
+  const renderPeriodicReservationRow = (reservaGroup, index) => (
+    <tr key={index}>
+      <td style={{ textAlign: "center" }}>
+        <strong>Periodica {reservaGroup.periodic_type}</strong>
+      </td>
+      <td>
+        <strong>Inicio periodico:</strong> {formatDate(reservaGroup.reservasGroup[0].fecha_inicio)}
+      </td>
+      <td>
+        {formatTime(reservaGroup.reservasGroup[0].fecha_inicio)} - {formatTime(reservaGroup.reservasGroup[0].fecha_fin)}
+      </td>
+      <td width="3%" style={{ textAlign: "center" }}>
+        {reservaGroup.reservasGroup[0].sala_numero}
+      </td>
+      <td width="10%" style={{ textAlign: "center" }}>
+        <Button variant="primary" onClick={() => handleVerDetallesClick(reservaGroup)}>
+          Ver detalles ({reservaGroup.reservasGroup.length})
+        </Button>
+        <Collapse in={expandedGroup === reservaGroup.periodicValue}>
+          <div>
+            <td></td>
+            <Button variant="danger" size="sm" onClick={() => openDeleteModal(reservaGroup)}>
+              Eliminar reservas
+            </Button>
+          </div>
+        </Collapse>
+      </td>
+    </tr>
+  );
+
+  const renderPeriodicReservationDetails = (reservaGroup) => (
+    <>
+    <td colSpan={5}>
+        <Collapse in={expandedGroup === reservaGroup.periodicValue}>
+          <div>
+            <Table striped bordered hover style={{ margin: "auto", padding: "20px" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "center" }}>#</th>
+                  <th style={{ textAlign: "left" }}>Fecha</th>
+                  <th style={{ textAlign: "left" }}>Horario</th>
+                  <th style={{ textAlign: "center" }}>Sala</th>
+                  <th style={{ textAlign: "center" }}>Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-      </Collapse>
-    </td>
-  </>
-);
+              </thead>
+              <tbody>
+                {reservaGroup.reservasGroup.map((reserva, index) => (
+                  <tr key={index}>
+                    <td width="3%" style={{ textAlign: "center" }}>
+                      {index + 1 + indexOfFirstEntry}
+                    </td>
+                    <td>{formatDate(reserva.fecha_inicio)}</td>
+                    <td>
+                      {formatTime(reserva.fecha_inicio)} - {formatTime(reserva.fecha_fin)}
+                    </td>
+                    <td width="3%" style={{ textAlign: "center" }}>
+                      {reserva.sala_numero}
+                    </td>
+                    <td width="10%" style={{ textAlign: "center" }}>
+                      <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>
+                        Ver reserva
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </Collapse>
+      </td>
+    </>
+  );
 
-const renderNonPeriodicReservationRow = (reserva, index) => (
-  <tr key={index}>
-    <td width="10%" style={{ textAlign: "center" }}>
-      <strong>Única</strong>
-    </td>
-    <td>{formatDate(reserva.fecha_inicio)}</td>
-    <td>
-      {formatTime(reserva.fecha_inicio)} - {formatTime(reserva.fecha_fin)}
-    </td>
-    <td width="3%" style={{ textAlign: "center" }}>
-      {reserva.sala_numero}
-    </td>
-    <td width="10%" style={{ textAlign: "center" }}>
-      <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>
-        Ver reserva
-      </Button>
-    </td>
-  </tr>
-);
+  const renderNonPeriodicReservationRow = (reserva, index) => (
+    <tr key={index}>
+      <td width="10%" style={{ textAlign: "center" }}>
+        <strong>Única</strong>
+      </td>
+      <td>{formatDate(reserva.fecha_inicio)}</td>
+      <td>
+        {formatTime(reserva.fecha_inicio)} - {formatTime(reserva.fecha_fin)}
+      </td>
+      <td width="3%" style={{ textAlign: "center" }}>
+        {reserva.sala_numero}
+      </td>
+      <td width="10%" style={{ textAlign: "center" }}>
+        <Button variant="primary" onClick={() => verReservaOnClick(reserva)}>
+          Ver reserva
+        </Button>
+      </td>
+    </tr>
+  );
 
   const indexOfLastEntry = currentPage * entriesPerPage;
   const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
@@ -258,12 +272,29 @@ const renderNonPeriodicReservationRow = (reserva, index) => (
              ))}
             </tbody>
           </Table>
+
+          <Modal show={show} onHide={handleClose}>
+            <Modal.Header closeButton>
+              <Modal.Title>Eliminar reservas</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              ¿Está seguro de que desea eliminar las reservas? <strong>Esta acción es irreversible.</strong>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={handleClose}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleDelete}>
+                Eliminar
+              </Button>
+            </Modal.Footer>
+          </Modal>
         </>
       ) : (
         <div>No tienes reservas hechas.</div>
       )}
     </div>
-  );  
+  );
 };
 
 MisReservasView.navigate = (date, action) => {

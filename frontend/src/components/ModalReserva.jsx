@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Dropdown, Tabs, Tab, Card, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Modal, Button, Dropdown, Tabs, Tab, Card, OverlayTrigger, Tooltip, ToggleButton, Alert } from 'react-bootstrap';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { getDay } from 'date-fns';
 import es from 'date-fns/locale/es';
@@ -32,6 +32,9 @@ const ModalReserva = ({
   const [periodic_Value, setPeriodicValue] = useState();
   const [newDate, setNewDate] = useState(selectedDate);
   const [tabKey, setTabKey] = useState("sala");
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState('');
+  const [alertMessage, setAlertMessage] = useState([]);
   const horarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
   
   const createReservationDict = () => {
@@ -60,7 +63,7 @@ const ModalReserva = ({
       sala_numero: parseInt(selectedSala.numero),
       fecha_inicio: fechaInicio.format('YYYY-MM-DDTHH:mm:ss'),
       fecha_fin: fechaFin.format('YYYY-MM-DDTHH:mm:ss'),
-      sala_id: selectedSala.id,
+      sala_id: selectedSala.id || selectedSala._id,
       periodic_Type: isPeriodic ? periodic_Type : null,
       periodic_Value: isPeriodic ? periodic_Value : null
     };
@@ -161,7 +164,7 @@ const ModalReserva = ({
   }, [status]);
 
   useEffect(() => {
-    if (selectedSala) {
+    if (selectedSala && tabKey == "sala") {
       const fetchHorariosDisponibles = async () => {
         const date = selectedEvent ? new Date(selectedEvent.fecha_inicio) : selectedDate;
         const year = date.getFullYear();
@@ -196,7 +199,38 @@ const ModalReserva = ({
   // Para conseguir la data de las salas
   useEffect(() => {
     if(horarioInicio && horarioFin && tabKey === "disponibilidad"){
-      // Falta verificar si los horarios son congruentes, no es posible que el horario inicial sea a las 12 pm y que termine a las 8am
+      const AMPMSuffix = (hora) => {
+        const suffix = parseInt(hora.split(':')[0]) >= 12? 'PM' : 'AM';
+        return `${hora} ${suffix}`;
+      }
+
+      const validarFechas = () => {
+        const fechaInicio =  moment(selectedDate).set({
+          hour: parseInt(horarioInicio.split(':')[0]),
+          minute: parseInt(horarioInicio.split(':')[1]),
+        }).format('YYYY-MM-DDTHH:mm:ss');
+        const fechaFin =  moment(selectedDate).set({
+            hour: parseInt(horarioFin.split(':')[0]),
+            minute: parseInt(horarioFin.split(':')[1]),
+        }).format('YYYY-MM-DDTHH:mm:ss');
+        console.log(fechaInicio, fechaFin);
+  
+        if (fechaInicio === fechaFin) {
+          setAlertType('danger');
+          setAlertMessage(['¡Error de rango de fechas!','El horario de inicio y fin no pueden ser el mismo.']);
+          setShowAlert(true);
+          return false;
+        }
+  
+        if (fechaInicio > fechaFin) {
+          setAlertType('danger');
+          setAlertMessage(['¡Error de rango de fechas!',`El horario de inicio (${AMPMSuffix(horarioInicio)}) no puede ser mayor al horario de fin (${AMPMSuffix(horarioFin)}).`])
+          setShowAlert(true);
+          return false;
+        }
+        return true
+      }
+
       const fetchSalasDisponibles = async () =>{
         const fechaInicio = moment(selectedDate).set({
           hour: parseInt(horarioInicio.split(':')[0]),
@@ -213,12 +247,12 @@ const ModalReserva = ({
         );
         res.data === null || res.data.length === 0 ? setSalasDisponibles([]) : setSalasDisponibles(res.data);
       }
-      fetchSalasDisponibles();
+      if (validarFechas()) { fetchSalasDisponibles(); }
     }
   }, [horarioInicio, horarioFin]);
 
   const limitarHorariosFin = () => {
-    if (!horarioInicio || !horariosDisponibles.length) return [];
+    if (tabKey != "salas" && !horarioInicio || !horariosDisponibles.length) return [];
     console.log("horario inicio: " + horarioInicio);
 
     const horaInicioComparable = parseInt(horarioInicio.split(":")[0]);
@@ -251,21 +285,27 @@ const ModalReserva = ({
     setPeriodicValue(newDate);
   };
 
-  const testPeriodicButton = () => {
-    console.log(salas);
-    setSelectedSala(salas[0]);
-    console.log(horariosDisponibles);
-    setHorarioInicio(horariosDisponibles[0]);
-    setHorarioFin(horariosDisponibles[2]);
-    setIsPeriodic(true);
-    setPeriodicType('Mensual');
-    setPeriodicValue(selectedDate);
-  };
+  // const testPeriodicButton = () => {
+  //   console.log(salas);
+  //   setSelectedSala(salas[0]);
+  //   console.log(horariosDisponibles);
+  //   setHorarioInicio(horariosDisponibles[0]);
+  //   setHorarioFin(horariosDisponibles[2]);
+  //   setIsPeriodic(true);
+  //   setPeriodicType('Mensual');
+  //   setPeriodicValue(selectedDate);
+  // }; 
 
-  const Separator = () => {
-    return <div style={{ height: '1px', background: '#ddd', margin: '10px 0' }}></div>;
-  };
-  
+  const checkSala = (sala) => {
+    if (selectedSala) {
+      if (selectedSala._id !== sala._id) {
+        setSelectedSala(sala);
+      }
+    } else {
+      setSelectedSala(sala);
+    }
+  }
+
   return (
     <Modal centered show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>
@@ -305,7 +345,10 @@ const ModalReserva = ({
       <div style={{ marginBottom: '15px' }}>
         <h6>Selecciona un horario de inicio:</h6>
         <Dropdown>
-          <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio" disabled={!selectedSala}>
+          <Dropdown.Toggle
+              variant="primary"
+              id="dropdown-horario-inicio"
+            >
             {horarioInicio ? horarioInicio : 'Horario de inicio'}
           </Dropdown.Toggle>
           <Dropdown.Menu>
@@ -328,7 +371,10 @@ const ModalReserva = ({
       <div style={{ marginBottom: '15px' }}>
         <h6>Selecciona un horario de fin:</h6>
         <Dropdown>
-          <Dropdown.Toggle variant="primary" id="dropdown-horario-fin" disabled={!horarioInicio}>
+          <Dropdown.Toggle
+              variant="primary"
+              id="dropdown-horario-fin"
+            >
             {horarioFin ? horarioFin : 'Horario de fin'}
           </Dropdown.Toggle>
           <Dropdown.Menu>
@@ -347,10 +393,21 @@ const ModalReserva = ({
       </div>
     </Tab>
     <Tab eventKey="disponibilidad" title="Buscar disponibilidad horaria">
+    <div>
+      {showAlert && (
+        <Alert variant={alertType} onClose={() => setShowAlert(false)} dismissible>
+        <Alert.Heading>{alertMessage[0]}</Alert.Heading>
+        <p>{alertMessage[1]}</p>
+        </Alert>
+      )}
+    </div>
     <h6 style={{ display: 'flex', justifyContent: 'center'}}>Selecciona un rango de horarios:</h6>
     <div style={{ display: 'flex', marginBottom: '15px', justifyContent: 'space-around' }}>
         <Dropdown>
-          <Dropdown.Toggle variant="primary" id="dropdown-horario-inicio">
+          <Dropdown.Toggle
+              variant="primary"
+              id="dropdown-horario-inicio"
+            >
             {horarioInicio ? `Inicio: ${horarioInicio}` : 'Horario de inicio'}
           </Dropdown.Toggle>
           <Dropdown.Menu>
@@ -367,7 +424,10 @@ const ModalReserva = ({
           </Dropdown.Menu>
         </Dropdown>
         <Dropdown>
-          <Dropdown.Toggle variant="primary" id="dropdown-horario-fin">
+          <Dropdown.Toggle
+              variant="primary"
+              id="dropdown-horario-fin"
+            >
             {horarioFin ? `Fin: ${horarioFin}` : 'Horario de fin'}
           </Dropdown.Toggle>
           <Dropdown.Menu>
@@ -389,7 +449,7 @@ const ModalReserva = ({
       <Card border='info' style={{backgroundColor: '#6c757d2e'}}>
         <Card.Body>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gridGap: '10px' }}>
-            {(salasDisponibles.length > 0) ? salasDisponibles.map(sala => (
+            {salasDisponibles && salasDisponibles.length > 0 ? salasDisponibles.map(sala => (
               <OverlayTrigger
                 placement="top"
                 delay={{ show: 250 }}
@@ -401,7 +461,16 @@ const ModalReserva = ({
                   );
                 }}
               >
-                <Button variant="primary">Sala {sala.numero}</Button>
+                <ToggleButton
+                  className="mb-2"
+                  id={"toggle-check-" + sala._id}
+                  type="checkbox"
+                  variant="outline-primary"
+                  checked={selectedSala && selectedSala._id === sala._id}
+                  onChange={() => checkSala(sala)}
+                >
+                  Sala {sala.numero}
+                </ToggleButton>
               </OverlayTrigger>
             )) : 
             <div style={{ display: 'flex', justifyContent: 'center' }}>No hay salas disponibles para el rango de horario</div>}
@@ -428,13 +497,21 @@ const ModalReserva = ({
         <div style={{ marginBottom: '15px' }}>
           <h6>Selecciona una nueva fecha:</h6>
           <DatePicker
+            showIcon
+            toggleCalendarOnIconClick
             selected={newDate}
             onChange={(date) => setNewDate(date)}
+            dateFormat={'dd/MM/yyyy'}
+            showMonthDropdown
             filterDate={(date) => {
               const day = date.getDay();
               return day !== 0 && day !== 6;
             }}
-            dateFormat="dd-MM-yyyy"
+            locale={'es'}
+            minDate={newDate}
+            maxDate={() => {
+              return new Date(new Date(newDate).getFullYear(), 11, 31)
+            }} 
           />
         </div>
         <div style={{ marginBottom: '15px' }}>
@@ -484,7 +561,7 @@ const ModalReserva = ({
       </div>
     )}
         {!isModifying && <div style={{ marginBottom: '15px' }}>
-          <Separator        /* Agrega una barra de espaciado*/      />
+          <hr/>
           <h6>¿Reserva periódica?</h6>
           <label>
             <input
