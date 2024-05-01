@@ -11,7 +11,7 @@ from dateutil import parser
 from dateutil.rrule import rrule, MONTHLY, WEEKLY
 from dateutil.relativedelta import relativedelta
 from dateutil.rrule import MO, TU, WE, TH, FR, SA, SU
-from typing import Optional
+from typing import Optional, Union
 # from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +40,7 @@ class Reserva(BaseModel):
 
 async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Request):
     try:
-        # ic(f"FUNCION verificar_disponibilidad - reserva: {reserva.fecha_inicio}")
+        ic(f"FUNCION verificar_disponibilidad - reserva: {reserva}")
         horarios_disponibles = await obtener_horarios_disponibles(
             fechaInicio=reserva.fecha_inicio,
             sala_id=reserva.sala_id,
@@ -69,7 +69,7 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
            (reserva.fecha_fin.strftime("%H:%M") not in horarios_disponibles):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="La sala no está disponible para el intervalo de tiempo seleccionado."
+                detail=str(reserva.fecha_inicio.date())
             )
         # ic(f"Paso el primer if de los horarios disponibles")
 
@@ -80,7 +80,9 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
             if (r["fecha_inicio"] < reserva.fecha_fin) and (r["fecha_fin"] > reserva.fecha_inicio):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="La sala ya está reservada para ese intervalo de tiempo."
+                    detail={
+                    "date": reserva.fecha_inicio.date() 
+                    }
                 )
 
             ic(f"La reserva seleccionada es: {r}")
@@ -88,10 +90,9 @@ async def verificar_disponibilidad(reserva: Reserva,oficina_id: str, request: Re
         return True
 
     except Exception as e:
-        # Handle errors
-        ic(f"Error en la verificación de disponibilidad: {e}")
+        ic(e)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise e
 
 
 async def ordenar_salas_ascendente(salas):
@@ -301,37 +302,11 @@ async def obtener_horarios_disponibles(fechaInicio: str, sala_id: str, oficina_i
         return horarios_disponibles
     except Exception as e:
         traceback.print_exc()
-        return {f"Error al obtener horarios disponibles: {e}"} 
+        raise e
     
-# Operación para hacer una reserva en la base de datos
-@app.post("/reservar/{oficina_id}", response_class=JSONResponse)
-async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
-    reserva = Reserva(**reserva_json)
-    # ic(f"Funcion POST: {reserva}")
-    if not await verificar_disponibilidad(reserva, oficina_id, request):
-        raise HTTPException(
-            status_code=400,
-            detail="La sala ya está reservada para ese intervalo de tiempo."
-        )
-    async with await request.app.mongodb_client.start_session() as session:
-        try:
-            await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(exclude={'periodic_Type','periodic_Value'}), session=session)
-        except Exception as e:
-            # Manejar errores de la transacción
-            ic(f"Error al hacer reserva: {e}")
-            raise HTTPException(status_code=500, detail="Error interno del servidor")
-    
-    return JSONResponse(status_code=200, content={"message": "Reserva realizada exitosamente"})
-
-@app.post("/reservar_periodica/{oficina_id}", response_class=JSONResponse)
-async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: Request):
-    reserva = Reserva(**reserva_json)
+@app.get("/obtener_reservas_periodicas/{oficina_id}")
+async def obtener_reservas_periodicas(reserva: Union[Reserva, dict], oficina_id: str, request: Request):
     try:
-        if not await verificar_disponibilidad(reserva, oficina_id, request):
-            raise HTTPException(
-                status_code=400,
-                detail="La sala ya está reservada para ese intervalo de tiempo."
-            )
         dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
         dia_semana_reserva = reserva.fecha_inicio.weekday()
         # ic(f"dia_semana_reserva {dia_semana_reserva}")
@@ -369,13 +344,43 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
             ic(f"fecha {fecha}")
             # Verificar disponibilidad para cada reserva periódica
             if not await verificar_disponibilidad(Reserva(**nueva_reserva_dict), oficina_id, request):
-                raise HTTPException(
-                    status_code=400,
-                    detail="La sala ya está reservada para ese intervalo de tiempo."
-                )
+                raise Exception
             reservas_creadas.append(nueva_reserva_dict)
 
         ic(f"reservas_creadas {reservas_creadas}")
+        return reservas_creadas
+    except Exception as e:
+        traceback.print_exc()
+        raise e
+
+# Operación para hacer una reserva en la base de datos
+@app.post("/reservar/{oficina_id}", response_class=JSONResponse)
+async def hacer_reserva(oficina_id: str, reserva_json: dict, request: Request):
+    reserva = Reserva(**reserva_json)
+    # ic(f"Funcion POST: {reserva}")
+    if not await verificar_disponibilidad(reserva, oficina_id, request):
+        raise HTTPException(
+            status_code=400,
+            detail="La sala ya está reservada para ese intervalo de tiempo."
+        )
+    async with await request.app.mongodb_client.start_session() as session:
+        try:
+            await request.app.mongodb_client[oficina_id]["reservas"].insert_one(reserva.model_dump(exclude={'periodic_Type','periodic_Value'}), session=session)
+        except Exception as e:
+            # Manejar errores de la transacción
+            ic(f"Error al hacer reserva: {e}")
+            raise HTTPException(status_code=500, detail="Error interno del servidor")
+    
+    return JSONResponse(status_code=200, content={"message": "Reserva realizada exitosamente"})
+
+@app.post("/reservar_periodica/{oficina_id}", response_class=JSONResponse)
+async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: Request):
+    reserva = Reserva(**reserva_json)
+    try:
+        if not await verificar_disponibilidad(reserva, oficina_id, request):
+            raise Exception
+        
+        reservas_creadas = await obtener_reservas_periodicas(reserva, oficina_id, request)
         async with await request.app.mongodb_client.start_session() as session:
             try:
                 for reserva_periodica in reservas_creadas:
@@ -384,14 +389,14 @@ async def hacer_reserva_periodica(oficina_id: str, reserva_json: dict, request: 
                 # Manejar errores de la transacción
                 ic(f"Error al hacer reserva: {e}")
                 traceback.print_exc()
-                raise HTTPException(status_code=500, detail="Error interno del servidor")
+                raise HTTPException(status_code=500, detail="Error en la transacción")
 
         return JSONResponse(status_code=200, content={"message": "Reservas realizadas exitosamente"})
 
     except Exception as e:
         ic(f"Error al hacer reserva: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise e
 
 
 # Operación para buscar una reserva mediante el ID de la sala y actualizar el datetime de la reserva
