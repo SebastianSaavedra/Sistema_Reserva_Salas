@@ -27,6 +27,10 @@ const ApiCaller = () => {
       return axios.get(`${url_web}/horarios_disponibles/${selectedOfficeId}?fechaInicio=${fecha}&sala_id=${sala_id}&reserva_id=${reserva_id}`);
     },
     
+    getPeriodicReservationData: (reserva) => {
+      return axios.get(`${url_web}/obtener_reservas_periodicas/${selectedOfficeId}`, reserva);
+    },
+    
     postReservation: (reserva) => {
       return axios.post(`${url_web}/reservar/${selectedOfficeId}`, reserva);
     },
