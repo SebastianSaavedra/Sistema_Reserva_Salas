@@ -35,6 +35,7 @@ const ModalReserva = ({
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState('');
   const [alertMessage, setAlertMessage] = useState([]);
+  const [displayInfoModal, setDisplayInfoModal] = useState(false);
   const horarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
   
   const createReservationDict = () => {
@@ -114,15 +115,15 @@ const ModalReserva = ({
         console.log(result);
         setStatus(result);
         } catch (error) {
-        console.error('Error al realizar la reserva:', error);
+        console.error('Error al solicitar las fechas periodicas disponibles:', error);
         const errorMessage = error && error.response.data.detail ? `Ya existe una reserva dentro de ese rango de horario para la fecha: ${error.response.data.detail}` : 'Error interno del servidor.';
         setAlertType('danger');
         setAlertMessage(['¡Error al realizar la reserva periódica!', errorMessage]);
         setShowAlert(true);
         setIsLoading(false);
         }
-  },
-  
+    },
+    
     submitReservation: async () => {
       try {
       const reservation = createReservationDict();
@@ -139,7 +140,7 @@ const ModalReserva = ({
       setShowAlert(true);
       setIsLoading(false);
       }
-  },
+    },
     
     submitPeriodicReservation: async () => {
         try {
@@ -150,32 +151,38 @@ const ModalReserva = ({
         setStatus(result);
         } catch (error) {
         console.error('Error al realizar la reserva:', error);
-        const errorMessage = error && error.response.data.detail ? `Ya existe una reserva dentro de ese rango de horario para la fecha: ${error.response.data.detail}` : 'Error interno del servidor.';
+        const errorMessage = error && error.response.data.detail ? `Ya existe una reserva dentro de ese rango de horario para la fecha: ${error.response.data.detail}\nEs posible que la sala haya sido reservada recientemente, favor ingresar los datos nuevamente.` : 'Error interno del servidor.';
         setAlertType('danger');
         setAlertMessage(['¡Error al realizar la reserva periódica!', errorMessage]);
         setShowAlert(true);
         setIsLoading(false);
         }
-    },
+      },
 
     modifyReservation: async () => {
-        try {
-        setIsLoading(true);
-        const reservationData = createReservationDict();
-        const result = await api.modifyReservation(selectedEvent.reserva_id, reservationData);
-        console.log(result);
-        onModifiedReservation(reservationData);
-        setStatus(result);
-        } catch (error) {
-        console.error('Error al realizar la reserva:', error);
-        const errorMessage = error ? error.response.data.detail : 'Error interno del servidor.';
-        console.log(errorMessage);
-        setAlertType('danger');
-        setAlertMessage(['¡Error al realizar la reserva!',errorMessage]);
-        setShowAlert(true);
-        setIsLoading(false);
-        }
+      try {
+      setIsLoading(true);
+      const reservationData = createReservationDict();
+      const result = await api.modifyReservation(selectedEvent.reserva_id, reservationData);
+      console.log(result);
+      onModifiedReservation(reservationData);
+      setStatus(result);
+      } catch (error) {
+      console.error('Error al realizar la reserva:', error);
+      const errorMessage = error ? error.response.data.detail : 'Error interno del servidor.';
+      console.log(errorMessage);
+      setAlertType('danger');
+      setAlertMessage(['¡Error al realizar la reserva!',errorMessage]);
+      setShowAlert(true);
+      setIsLoading(false);
+      }
     },
+  }
+
+  const displayConfirmReservationInfo = async () => {
+    const reservation = createReservationDict();
+    const availableReservationData = await api.getPeriodicReservationData(reservation);
+    return availableReservationData;
   }
 
   useEffect(() => {
@@ -657,12 +664,13 @@ const ModalReserva = ({
       <Modal.Footer>
         <Button variant="secondary" onClick={handler.ResetModal} disabled={isLoading}>
           Cancelar
-        </Button>
-        <Button variant="primary" onClick={isModifying ? handler.modifyReservation : isPeriodic ? handler.submitPeriodicReservation : handler.submitReservation} disabled={isLoading}>
+        </Button>                           {/* setDisplayInfoModal(true) */}
+        <Button variant="primary" onClick={(isModifying ? handler.modifyReservation : isPeriodic ? handler.submitPeriodicReservation : handler.submitReservation)} disabled={isLoading}>
           {isModifying ? 'Guardar cambios' : 'Crear reserva'}
         </Button>
       </Modal.Footer>
     </Modal>
+    // TODO: Escribir el modal que te muestre la info de tu reserva y te pregunte si deseas confirmar tu reserva
   );
 };
 export default ModalReserva;
