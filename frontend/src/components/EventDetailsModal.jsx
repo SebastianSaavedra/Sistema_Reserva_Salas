@@ -19,6 +19,7 @@ const EventDetailsModal = ({ formatedEvent, onModify, onClose }) => {
       console.error('Error al eliminar la reserva:', error);
     }
   };
+  
   const formattedStartDate = moment(formatedEvent.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY - [Hora:] h:mm A');
   const formattedEndDate = moment(formatedEvent.fecha_fin).format('dddd, D [de] MMMM [de] YYYY - [Hora:] h:mm A');
   let formattedPeriodicDate = '';

@@ -7,6 +7,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import moment from 'moment';
 import 'moment/locale/es';
 import ApiCaller from '../Api';
+import ConfirmationModal from './ConfirmationModal';
 
 registerLocale('es', es);
 
@@ -35,10 +36,12 @@ const ModalReserva = ({
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState('');
   const [alertMessage, setAlertMessage] = useState([]);
-  const [displayInfoModal, setDisplayInfoModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [reservationData, setReservationData] = useState();
   const horarios = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
   
   const createReservationDict = () => {
+    console.log(selectedDate);
     const fechaInicio = moment(selectedDate).isSame(newDate) ? 
         moment(selectedDate).set({
             hour: parseInt(horarioInicio.split(':')[0]),
@@ -179,12 +182,6 @@ const ModalReserva = ({
     },
   }
 
-  const displayConfirmReservationInfo = async () => {
-    const reservation = createReservationDict();
-    const availableReservationData = await api.getPeriodicReservationData(reservation);
-    return availableReservationData;
-  }
-
   useEffect(() => {
     if (selectedEvent) {
       setSelectedSala({ id: selectedEvent.sala_id, numero: selectedEvent.sala_numero });
@@ -200,6 +197,12 @@ const ModalReserva = ({
       handler.ResetModal();
     }
   }, [status]);
+
+  useEffect(() => {
+    if (showConfirmationModal) {
+      setReservationData(createReservationDict());
+    }
+  }, [showConfirmationModal]);
 
   useEffect(() => {
     if (selectedSala && tabKey == "sala") {
@@ -346,6 +349,15 @@ const ModalReserva = ({
   }
 
   return (
+    <>
+    {showConfirmationModal && (
+      <ConfirmationModal
+        reservationData={reservationData}
+        onCloseConfirmationModal={() => setShowConfirmationModal(false)}
+        onConfirmReservation={() => isPeriodic ? handler.submitPeriodicReservation : handler.submitReservation}
+      />
+    )}
+
     <Modal centered show={show} onHide={handler.ResetModal}>
       <Modal.Header closeButton>
         <Modal.Title>{isModifying ? `Modificar Reserva ${moment(selectedEvent.fecha_inicio).format('dddd, D [de] MMMM [de] YYYY')}` : `Reservar ${moment(selectedDate).format('dddd, D [de] MMMM [de] YYYY')}`}</Modal.Title>
@@ -665,12 +677,12 @@ const ModalReserva = ({
         <Button variant="secondary" onClick={handler.ResetModal} disabled={isLoading}>
           Cancelar
         </Button>                           {/* setDisplayInfoModal(true) */}
-        <Button variant="primary" onClick={(isModifying ? handler.modifyReservation : isPeriodic ? handler.submitPeriodicReservation : handler.submitReservation)} disabled={isLoading}>
+        <Button variant="primary" onClick={(isModifying ? handler.modifyReservation : setShowConfirmationModal(true))} disabled={isLoading}>
           {isModifying ? 'Guardar cambios' : 'Crear reserva'}
         </Button>
       </Modal.Footer>
-    </Modal>
-    // TODO: Escribir el modal que te muestre la info de tu reserva y te pregunte si deseas confirmar tu reserva
+    </Modal>   
+    </> 
   );
 };
 export default ModalReserva;

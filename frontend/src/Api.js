@@ -31,6 +31,10 @@ const ApiCaller = () => {
       return axios.get(`${url_web}/obtener_reservas_periodicas/${selectedOfficeId}`, reserva);
     },
     
+    getReservationData: (reserva) => {
+      return axios.get(`${url_web}/obtener_datos_reserva/${selectedOfficeId}`, reserva);
+    },
+    
     postReservation: (reserva) => {
       return axios.post(`${url_web}/reservar/${selectedOfficeId}`, reserva);
     },
